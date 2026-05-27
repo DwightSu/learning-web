@@ -489,6 +489,7 @@ function addUser() {
     state.allUsers.sort();
     Store.set('allUsers', state.allUsers);
     switchUser(trimmed);
+    maybeSync();
 }
 
 function deleteUser() {
@@ -519,6 +520,7 @@ function deleteUser() {
     renderUserSelect();
     renderAll();
     toast('用户"' + username + '"已删除');
+    maybeSync();
 }
 
 function renderAll() {
