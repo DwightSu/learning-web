@@ -77,7 +77,8 @@ const SyncService = {
             data.users[username] = {
                 sessions: Store.get('sessions_' + username, []),
                 posts: Store.get('posts_' + username, []),
-                gallery: Store.get('gallery_' + username, [])
+                gallery: Store.get('gallery_' + username, []),
+                links: Store.get('links_' + username, [])
             };
         }
         return data;
@@ -149,7 +150,8 @@ const SyncService = {
                 const local = {
                     sessions: Store.get('sessions_' + username, []),
                     posts: Store.get('posts_' + username, []),
-                    gallery: Store.get('gallery_' + username, [])
+                    gallery: Store.get('gallery_' + username, []),
+                    links: Store.get('links_' + username, [])
                 };
                 let server = null;
                 if (serverData && serverData.users && serverData.users[username]) {
@@ -159,12 +161,14 @@ const SyncService = {
                 const merged = {
                     sessions: mergeArrays(local.sessions, server ? server.sessions : []),
                     posts: mergeArrays(local.posts, server ? server.posts : []),
-                    gallery: mergeGallery(local.gallery, server ? server.gallery : [])
+                    gallery: mergeGallery(local.gallery, server ? server.gallery : []),
+                    links: mergeArrays(local.links, server ? server.links : [])
                 };
 
                 Store.set('sessions_' + username, merged.sessions);
                 Store.set('posts_' + username, merged.posts);
                 Store.set('gallery_' + username, merged.gallery);
+                Store.set('links_' + username, merged.links || []);
             }
 
             await this.pushToGist();
@@ -247,6 +251,7 @@ const SyncService = {
                     Store.set('sessions_' + username, userData.sessions || []);
                     Store.set('posts_' + username, userData.posts || []);
                     Store.set('gallery_' + username, userData.gallery || []);
+                    Store.set('links_' + username, userData.links || []);
                 }
             }
 
@@ -306,7 +311,7 @@ function maybeSync() {
     if (!SyncService.connected || SyncService.syncInProgress) return;
     if (_syncTimer) clearTimeout(_syncTimer);
     _syncTimer = setTimeout(function() {
-        SyncService.pushOnly();
+        SyncService.syncAll();
         _syncTimer = null;
     }, 2000);
 }
@@ -362,12 +367,14 @@ function loadUserData(username) {
     state.sessions = Store.get('sessions_' + username, []);
     state.posts = Store.get('posts_' + username, []);
     state.gallery = Store.get('gallery_' + username, []);
+    state.links = Store.get('links_' + username, []);
 }
 
 function saveUserData(username) {
     Store.set('sessions_' + username, state.sessions);
     Store.set('posts_' + username, state.posts);
     Store.set('gallery_' + username, state.gallery);
+    Store.set('links_' + username, state.links);
 }
 
 function saveCurrentUserData() {
@@ -386,6 +393,9 @@ let state = {
     gallery: [],
     currentPage: 'dashboard',
     currentPostId: null,
+    editingPostId: null,
+    links: [],
+    linkEditingId: null,
     calendarYear: new Date().getFullYear(),
     calendarMonth: new Date().getMonth(),
     isTransitioning: false,
@@ -413,6 +423,11 @@ function savePosts() {
 
 function saveGallery() {
     Store.set('gallery_' + state.activeUser, state.gallery);
+    maybeSync();
+}
+
+function saveLinks() {
+    Store.set('links_' + state.activeUser, state.links);
     maybeSync();
 }
 
@@ -458,6 +473,7 @@ function renderAll() {
     renderTimeline();
     renderBlogList();
     renderGallery();
+    renderLinks();
     renderStats();
 }
 
@@ -512,6 +528,7 @@ function deleteUser() {
     localStorage.removeItem('learn_sessions_' + username);
     localStorage.removeItem('learn_posts_' + username);
     localStorage.removeItem('learn_gallery_' + username);
+    localStorage.removeItem('learn_links_' + username);
 
     const nextUser = state.allUsers[0];
     state.activeUser = nextUser;
@@ -521,14 +538,6 @@ function deleteUser() {
     renderAll();
     toast('用户"' + username + '"已删除');
     maybeSync();
-}
-
-function renderAll() {
-    renderDashboard();
-    renderTimeline();
-    renderBlogList();
-    renderGallery();
-    renderStats();
 }
 
 function toast(msg, type) {
@@ -632,6 +641,7 @@ function navigate(page, data) {
         if (page === 'dashboard') renderDashboard();
         else if (page === 'timeline') renderTimeline();
         else if (page === 'blog') { renderBlogList(); renderGallery(); }
+        else if (page === 'links') renderLinks();
         else if (page === 'stats') renderStats();
     }, 250);
 }
@@ -754,22 +764,56 @@ document.getElementById('blogForm').addEventListener('submit', function(e) {
 
     const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
 
-    const post = {
-        id: Date.now(),
-        title,
-        tags,
-        content,
-        createdAt: new Date().toISOString(),
-        date: todayStr()
-    };
-
-    state.posts.unshift(post);
-    savePosts();
-    renderBlogList();
-    renderDashboard();
-    this.reset();
-    toast('文章发布成功！', 'success');
+    if (state.editingPostId) {
+        const post = state.posts.find(p => p.id === state.editingPostId);
+        if (post) {
+            post.title = title;
+            post.tags = tags;
+            post.content = content;
+            post.updatedAt = new Date().toISOString();
+            savePosts();
+            renderBlogList();
+            toast('文章已更新！', 'success');
+        }
+        cancelEdit();
+    } else {
+        const post = {
+            id: Date.now(),
+            title,
+            tags,
+            content,
+            createdAt: new Date().toISOString(),
+            date: todayStr()
+        };
+        state.posts.unshift(post);
+        savePosts();
+        renderBlogList();
+        renderDashboard();
+        this.reset();
+        toast('文章发布成功！', 'success');
+    }
 });
+
+function editPost(id) {
+    const post = state.posts.find(p => p.id === id);
+    if (!post) return;
+    state.editingPostId = id;
+    document.getElementById('blogTitle').value = post.title;
+    document.getElementById('blogTags').value = post.tags.join(', ');
+    document.getElementById('blogContent').value = post.content;
+    document.getElementById('blogSubmitBtn').textContent = '📝 更新文章';
+    document.getElementById('blogCancelBtn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+    state.editingPostId = null;
+    document.getElementById('blogForm').reset();
+    document.getElementById('blogSubmitBtn').textContent = '发布文章';
+    document.getElementById('blogCancelBtn').style.display = 'none';
+}
+
+document.getElementById('blogCancelBtn').addEventListener('click', cancelEdit);
 
 document.getElementById('blogSearch').addEventListener('input', renderBlogList);
 
@@ -916,7 +960,10 @@ function renderBlogList() {
         const tagsHtml = p.tags.map(t => `<span class="blog-post-tag">${t}</span>`).join('');
         return `
             <div class="blog-post" data-id="${p.id}">
-                <button class="blog-post-delete" data-id="${p.id}">✕ 删除</button>
+                <div class="blog-post-actions">
+                    <button class="blog-post-edit" data-id="${p.id}">✏️ 编辑</button>
+                    <button class="blog-post-delete" data-id="${p.id}">✕ 删除</button>
+                </div>
                 <div class="blog-post-title">${p.title}</div>
                 <div class="blog-post-meta">
                     <span>📅 ${formatDate(p.date)}</span>
@@ -946,6 +993,14 @@ function renderBlogList() {
                 renderDashboard();
                 toast('文章已删除');
             }
+        });
+    });
+
+    container.querySelectorAll('.blog-post-edit').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = parseInt(this.dataset.id);
+            editPost(id);
         });
     });
 }
@@ -982,6 +1037,116 @@ function showBlogDetail(id) {
         `;
     }, 250);
 }
+
+/* ========== Links ========== */
+function renderLinks() {
+    const container = document.getElementById('linkList');
+    const search = document.getElementById('linkSearch').value.trim().toLowerCase();
+
+    let list = state.links;
+    if (search) {
+        list = list.filter(l =>
+            (l.title && l.title.toLowerCase().includes(search)) ||
+            l.url.toLowerCase().includes(search) ||
+            l.desc.toLowerCase().includes(search)
+        );
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = '<p class="empty-msg">还没有收藏的链接</p>';
+        return;
+    }
+
+    container.innerHTML = list.map(l => `
+        <div class="link-item">
+            <div class="link-item-header">
+                <div class="link-item-title">${l.title || '🔗 链接'}</div>
+                <div class="link-item-actions">
+                    <button class="link-edit-btn" data-id="${l.id}">✏️ 编辑</button>
+                    <button class="link-delete-btn" data-id="${l.id}">✕ 删除</button>
+                </div>
+            </div>
+            <a href="${l.url}" class="link-item-url" target="_blank" rel="noopener">${l.url}</a>
+            <div class="link-item-desc">${l.desc}</div>
+            <div class="link-item-meta">📅 ${formatDate(l.createdAt)}</div>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.link-delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (confirm('确定删除这个链接吗？')) {
+                const id = parseInt(this.dataset.id);
+                state.links = state.links.filter(l => l.id !== id);
+                saveLinks();
+                renderLinks();
+                toast('链接已删除');
+            }
+        });
+    });
+
+    container.querySelectorAll('.link-edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = parseInt(this.dataset.id);
+            editLink(id);
+        });
+    });
+}
+
+function editLink(id) {
+    const link = state.links.find(l => l.id === id);
+    if (!link) return;
+    state.linkEditingId = id;
+    document.getElementById('linkUrl').value = link.url;
+    document.getElementById('linkTitle').value = link.title || '';
+    document.getElementById('linkDesc').value = link.desc;
+    document.getElementById('linkSubmitBtn').textContent = '📝 更新链接';
+    document.getElementById('linkCancelBtn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelLinkEdit() {
+    state.linkEditingId = null;
+    document.getElementById('linksForm').reset();
+    document.getElementById('linkSubmitBtn').textContent = '添加链接';
+    document.getElementById('linkCancelBtn').style.display = 'none';
+}
+
+document.getElementById('linksForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const url = document.getElementById('linkUrl').value.trim();
+    const title = document.getElementById('linkTitle').value.trim();
+    const desc = document.getElementById('linkDesc').value.trim();
+
+    if (state.linkEditingId) {
+        const link = state.links.find(l => l.id === state.linkEditingId);
+        if (link) {
+            link.url = url;
+            link.title = title;
+            link.desc = desc;
+            saveLinks();
+            renderLinks();
+            toast('链接已更新！', 'success');
+        }
+        cancelLinkEdit();
+    } else {
+        const link = {
+            id: Date.now(),
+            url,
+            title,
+            desc,
+            createdAt: new Date().toISOString()
+        };
+        state.links.unshift(link);
+        saveLinks();
+        renderLinks();
+        this.reset();
+        toast('链接已添加！', 'success');
+    }
+});
+
+document.getElementById('linkSearch').addEventListener('input', renderLinks);
+
+document.getElementById('linkCancelBtn').addEventListener('click', cancelLinkEdit);
 
 /* ========== Dashboard ========== */
 function renderDashboard() {
@@ -1529,7 +1694,8 @@ document.getElementById('exportBtn').addEventListener('click', function() {
         data.users[username] = {
             sessions: Store.get('sessions_' + username, []),
             posts: Store.get('posts_' + username, []),
-            gallery: Store.get('gallery_' + username, [])
+            gallery: Store.get('gallery_' + username, []),
+            links: Store.get('links_' + username, [])
         };
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1567,6 +1733,7 @@ document.getElementById('importFile').addEventListener('change', function(e) {
                         Store.set('sessions_' + username, userData.sessions || []);
                         Store.set('posts_' + username, userData.posts || []);
                         Store.set('gallery_' + username, userData.gallery || []);
+                        Store.set('links_' + username, userData.links || []);
                     }
                 }
 

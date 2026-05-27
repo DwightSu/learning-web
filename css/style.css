@@ -1399,6 +1399,125 @@ body {
     text-decoration: underline;
 }
 
+/* ========== Links ========== */
+.link-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.25s ease;
+}
+
+.link-item:hover {
+    background: #fafafe;
+}
+
+.link-item:last-child {
+    border-bottom: none;
+}
+
+.link-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.link-item-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.link-item-url {
+    font-size: 13px;
+    color: var(--primary-light);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    word-break: break-all;
+}
+
+.link-item-url:hover {
+    text-decoration: underline;
+}
+
+.link-item-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+.link-item-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+.link-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.link-item-actions button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.link-open-btn {
+    color: var(--primary);
+}
+
+.link-open-btn:hover {
+    background: #eef2ff;
+}
+
+.link-edit-btn {
+    color: var(--primary);
+}
+
+.link-edit-btn:hover {
+    background: #eef2ff;
+}
+
+.link-delete-btn {
+    color: var(--danger);
+}
+
+.link-delete-btn:hover {
+    background: #fef2f2;
+}
+
+.blog-post-actions {
+    display: flex;
+    gap: 6px;
+    float: right;
+    margin-left: 12px;
+}
+
+.blog-post-edit {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.blog-post-edit:hover {
+    background: #eef2ff;
+}
+
 /* ========== Chart ========== */
 .chart-container {
     min-height: 250px;

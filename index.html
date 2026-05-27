@@ -31,6 +31,10 @@
                     <span class="nav-icon">📝</span>
                     <span class="nav-text">学习博客</span>
                 </a>
+                <a href="#" class="nav-item" data-page="links">
+                    <span class="nav-icon">🔗</span>
+                    <span class="nav-text">链接记录</span>
+                </a>
                 <a href="#" class="nav-item" data-page="stats">
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">学习统计</span>
@@ -272,7 +276,8 @@
                                 </div>
                                 <textarea id="blogContent" rows="10" placeholder="写下你的学习心得..." required></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary">发布文章</button>
+                            <button type="submit" class="btn btn-primary" id="blogSubmitBtn">发布文章</button>
+                            <button type="button" class="btn btn-toolbar" id="blogCancelBtn" style="display:none">取消编辑</button>
                         </form>
                     </div>
                 </div>
@@ -297,6 +302,50 @@
                     </div>
                     <div class="card-body" id="blogList">
                         <p class="empty-msg">还没有博客文章</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== 链接记录 Links ========== -->
+            <section class="page" id="page-links" style="display:none">
+                <div class="page-header">
+                    <h2>🔗 链接记录</h2>
+                    <p class="page-desc">收藏有用的链接，写下它的用处</p>
+                </div>
+                <div class="card add-card">
+                    <div class="card-header">
+                        <h3>➕ 添加链接</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="linksForm">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2">
+                                    <label for="linkUrl">链接地址</label>
+                                    <input type="url" id="linkUrl" placeholder="https://..." required>
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label for="linkTitle">标题（可选）</label>
+                                    <input type="text" id="linkTitle" placeholder="链接名称">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="linkDesc">用途说明</label>
+                                <textarea id="linkDesc" rows="2" placeholder="这个链接是做什么用的..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="linkSubmitBtn">添加链接</button>
+                            <button type="button" class="btn btn-toolbar" id="linkCancelBtn" style="display:none">取消编辑</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📋 链接列表</h3>
+                        <div class="filter-bar">
+                            <input type="text" id="linkSearch" placeholder="搜索链接...">
+                        </div>
+                    </div>
+                    <div class="card-body" id="linkList">
+                        <p class="empty-msg">还没有收藏的链接</p>
                     </div>
                 </div>
             </section>
