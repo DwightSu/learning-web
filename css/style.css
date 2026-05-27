@@ -556,6 +556,15 @@ body {
     max-width: 1000px;
 }
 
+@media (min-width: 1240px) {
+    .main-content {
+        flex: none;
+        width: 1000px;
+        margin-left: calc(50% - 380px);
+        padding: 32px;
+    }
+}
+
 .page-header {
     margin-bottom: 24px;
 }
