@@ -79,17 +79,36 @@ function getAllUserData(username) {
 /* ========== User Management ========== */
 function renderUserSelect() {
     const mainSelect = document.getElementById('userSelect');
-    const statsSelect = document.getElementById('statsUserSelect');
-
     mainSelect.innerHTML = state.allUsers.map(u =>
         '<option value="' + u + '"' + (u === state.activeUser ? ' selected' : '') + '>' + u + '</option>'
     ).join('');
 
-    if (statsSelect) {
-        statsSelect.innerHTML = state.allUsers.map(u =>
-            '<option value="' + u + '"' + (u === state.activeUser ? ' selected' : '') + '>' + u + '</option>'
-        ).join('');
-    }
+    renderUserChecks();
+}
+
+function renderUserChecks() {
+    const container = document.getElementById('statsUserChecks');
+    if (!container) return;
+    const activeUsers = new Set(getSelectedCompareUsers());
+
+    container.innerHTML = state.allUsers.map(u => {
+        const checked = activeUsers.has(u);
+        return '<label class="user-compare-check' + (checked ? ' active' : '') + '">' +
+            '<input type="checkbox" value="' + u + '" ' + (checked ? 'checked' : '') + '>' +
+            u +
+        '</label>';
+    }).join('');
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            this.closest('.user-compare-check').classList.toggle('active', this.checked);
+        });
+    });
+}
+
+function getSelectedCompareUsers() {
+    const checks = document.querySelectorAll('#statsUserChecks input[type="checkbox"]:checked');
+    return Array.from(checks).map(cb => cb.value);
 }
 
 function switchUser(username) {
@@ -122,33 +141,34 @@ function addUser() {
     switchUser(trimmed);
 }
 
-function renameUser() {
-    const newName = prompt('请输入新名称（当前：' + state.activeUser + '）：');
-    if (!newName || !newName.trim()) return;
-    const trimmed = newName.trim();
-    if (trimmed === state.activeUser) return;
-    if (state.allUsers.includes(trimmed)) {
-        toast('该名称已被使用', 'error');
+function deleteUser() {
+    if (state.allUsers.length <= 1) {
+        toast('至少保留一个用户', 'error');
         return;
     }
-    const oldName = state.activeUser;
-    const idx = state.allUsers.indexOf(oldName);
-    state.allUsers[idx] = trimmed;
+
+    const code = Math.floor(1000 + Math.random() * 9000);
+    const answer = prompt('⚠️ 删除用户"' + state.activeUser + '"将清空所有数据！\n请输入验证码 [' + code + '] 确认删除：');
+    if (!answer) return;
+    if (parseInt(answer) !== code) {
+        toast('验证码错误，删除已取消', 'error');
+        return;
+    }
+
+    const username = state.activeUser;
+    state.allUsers = state.allUsers.filter(u => u !== username);
     Store.set('allUsers', state.allUsers);
+    localStorage.removeItem('learn_sessions_' + username);
+    localStorage.removeItem('learn_posts_' + username);
+    localStorage.removeItem('learn_gallery_' + username);
 
-    const oldData = getAllUserData(oldName);
-    Store.set('sessions_' + trimmed, oldData.sessions);
-    Store.set('posts_' + trimmed, oldData.posts);
-    Store.set('gallery_' + trimmed, Store.get('gallery_' + oldName, []));
-    Store.delKey && Store.delKey('sessions_' + oldName);
-    Store.delKey && Store.delKey('posts_' + oldName);
-    Store.delKey && Store.delKey('gallery_' + oldName);
-
-    state.activeUser = trimmed;
-    Store.set('activeUser', trimmed);
+    const nextUser = state.allUsers[0];
+    state.activeUser = nextUser;
+    Store.set('activeUser', nextUser);
+    loadCurrentUserData();
     renderUserSelect();
     renderAll();
-    toast('用户已重命名');
+    toast('用户"' + username + '"已删除');
 }
 
 function renderAll() {
@@ -690,28 +710,54 @@ function renderStats() {
 
 function renderUserComparison() {
     const container = document.getElementById('statsUserInfo');
-    const select = document.getElementById('statsUserSelect');
-    const selected = Array.from(select.selectedOptions).map(o => o.value);
+    const users = getSelectedCompareUsers();
 
-    const users = selected.length > 0 ? selected : [state.activeUser];
+    const displayUsers = users.length > 0 ? users : [state.activeUser];
 
-    container.innerHTML = '<div class="user-compare-info">' + users.map(username => {
+    let html = '<div class="user-compare-info">';
+
+    let mergedSessions = [];
+    let mergedPosts = [];
+    let mergedSubjects = new Set();
+
+    displayUsers.forEach(username => {
         const data = getAllUserData(username);
         const totalHours = data.sessions.reduce((s, ss) => s + ss.duration, 0);
         const totalSessions = data.sessions.length;
         const totalPosts = data.posts.length;
         const subjects = [...new Set(data.sessions.map(s => s.subject))];
-        const recentDate = data.sessions.length > 0 ? data.sessions.sort((a, b) => b.date.localeCompare(a.date))[0].date : '无';
+        const recentDate = data.sessions.length > 0 ?
+            data.sessions.slice().sort((a, b) => b.date.localeCompare(a.date))[0].date : '无';
 
-        return '<div class="user-compare-card">' +
+        html += '<div class="user-compare-card">' +
             '<h4>' + (username === state.activeUser ? '👤 ' : '') + username + '</h4>' +
             '<div class="user-compare-stat">📚 学习时长：<strong>' + totalHours.toFixed(1) + 'h</strong></div>' +
             '<div class="user-compare-stat">📅 学习次数：<strong>' + totalSessions + ' 次</strong></div>' +
             '<div class="user-compare-stat">📝 文章数：<strong>' + totalPosts + ' 篇</strong></div>' +
-            '<div class="user-compare-stat">📖 学习内容：<strong>' + (subjects.length > 0 ? subjects.join('、') : '无') + '</strong></div>' +
-            '<div class="user-compare-stat">🕐 最近学习：<strong>' + recentDate + '</strong></div>' +
+            '<div class="user-compare-stat">📖 内容：<strong>' + (subjects.length > 0 ? subjects.join('、') : '无') + '</strong></div>' +
+            '<div class="user-compare-stat">🕐 最近：<strong>' + recentDate + '</strong></div>' +
         '</div>';
-    }).join('') + '</div>';
+
+        mergedSessions = mergedSessions.concat(data.sessions);
+        data.subjects.forEach(s => mergedSubjects.add(s));
+        mergedPosts = mergedPosts.concat(data.posts);
+    });
+
+    if (displayUsers.length > 1) {
+        const totalHours = mergedSessions.reduce((s, ss) => s + ss.duration, 0);
+        const uniqueDates = new Set(mergedSessions.map(s => s.date));
+        html += '<div class="user-compare-card merged-card">' +
+            '<h4>📊 合计（' + displayUsers.length + '人）</h4>' +
+            '<div class="user-compare-stat">📚 总时长：<strong>' + totalHours.toFixed(1) + 'h</strong></div>' +
+            '<div class="user-compare-stat">📅 总次数：<strong>' + mergedSessions.length + ' 次</strong></div>' +
+            '<div class="user-compare-stat">📝 总文章：<strong>' + mergedPosts.length + ' 篇</strong></div>' +
+            '<div class="user-compare-stat">📅 学习天数：<strong>' + uniqueDates.size + ' 天</strong></div>' +
+            '<div class="user-compare-stat">📖 内容：<strong>' + ([...mergedSubjects].join('、') || '无') + '</strong></div>' +
+        '</div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function renderDailyChart() {
@@ -870,16 +916,27 @@ function renderSubjectChart() {
 }
 
 /* ========== Calendar ========== */
+function getCalendarData() {
+    const compareUsers = getSelectedCompareUsers();
+    const users = compareUsers.length > 0 ? compareUsers : [state.activeUser];
+
+    const dayStats = {};
+    users.forEach(username => {
+        const data = getAllUserData(username);
+        data.sessions.forEach(s => {
+            if (!dayStats[s.date]) dayStats[s.date] = { total: 0, subjects: {} };
+            dayStats[s.date].total += s.duration;
+            dayStats[s.date].subjects[s.subject] = (dayStats[s.date].subjects[s.subject] || 0) + s.duration;
+        });
+    });
+    return dayStats;
+}
+
 function renderCalendar() {
     const container = document.getElementById('calendarView');
     const { calendarYear: year, calendarMonth: month } = state;
 
-    const dayStats = {};
-    state.sessions.forEach(s => {
-        if (!dayStats[s.date]) dayStats[s.date] = { total: 0, subjects: {} };
-        dayStats[s.date].total += s.duration;
-        dayStats[s.date].subjects[s.subject] = (dayStats[s.date].subjects[s.subject] || 0) + s.duration;
-    });
+    const dayStats = getCalendarData();
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1143,8 +1200,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('addUserBtn').addEventListener('click', addUser);
 
+    document.getElementById('delUserBtn').addEventListener('click', deleteUser);
+
     document.getElementById('statsCompareBtn').addEventListener('click', function() {
         renderUserComparison();
+        renderCalendar();
     });
 
     renderUserSelect();

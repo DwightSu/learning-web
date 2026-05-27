@@ -15,6 +15,7 @@
                 <div class="user-switcher">
                     <select id="userSelect" class="user-select"></select>
                     <button class="btn btn-add-user" id="addUserBtn" title="新增用户">+</button>
+                    <button class="btn btn-del-user" id="delUserBtn" title="删除当前用户">-</button>
                 </div>
             </div>
             <nav class="nav">
@@ -248,10 +249,10 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <h3>� 用户对比</h3>
+                        <h3>👥 用户对比</h3>
                         <div class="user-compare-controls">
-                            <select id="statsUserSelect" class="user-select" multiple></select>
-                            <button class="btn btn-toolbar" id="statsCompareBtn">对比所选用户</button>
+                            <div class="user-compare-checks" id="statsUserChecks"></div>
+                            <button class="btn btn-toolbar" id="statsCompareBtn">📊 合并展示所选用户</button>
                         </div>
                     </div>
                     <div class="card-body" id="statsUserInfo">
@@ -260,7 +261,7 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <h3>�📈 每日学习时长</h3>
+                        <h3>📈 每日学习时长</h3>
                     </div>
                     <div class="card-body chart-container">
                         <canvas id="chartDaily"></canvas>

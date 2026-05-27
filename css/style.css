@@ -119,6 +119,25 @@ body {
     color: #fff;
 }
 
+.btn-del-user {
+    padding: 6px 10px;
+    background: rgba(239,68,68,0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.btn-del-user:hover {
+    background: rgba(239,68,68,0.3);
+    color: #fff;
+}
+
 /* ========== Duration Inputs ========== */
 .duration-inputs {
     display: flex;
@@ -141,31 +160,84 @@ body {
 /* ========== User Compare ========== */
 .user-compare-controls {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
-.user-compare-controls select[multiple] {
-    min-width: 180px;
-    height: 80px;
-    background: var(--card-bg);
-    color: var(--text);
+.user-compare-checks {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.user-compare-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 8px;
+    background: #f3f4f6;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: 20px;
+    cursor: pointer;
     font-size: 13px;
-    font-family: inherit;
-    padding: 4px;
-    outline: none;
+    color: var(--text);
+    transition: all 0.2s;
+    user-select: none;
 }
 
-.user-compare-controls select[multiple] option {
-    padding: 4px 8px;
-    border-radius: 3px;
+.user-compare-check:hover {
+    border-color: var(--primary-light);
+    background: #eef2ff;
 }
 
-.user-compare-controls select[multiple] option:checked {
+.user-compare-check.active {
     background: var(--primary);
+    border-color: var(--primary);
     color: #fff;
+}
+
+.user-compare-check input[type="checkbox"] {
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border: 2px solid var(--text-secondary);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.user-compare-check input[type="checkbox"]:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.user-compare-check.active input[type="checkbox"] {
+    border-color: #fff;
+}
+
+.user-compare-check.active input[type="checkbox"]:checked {
+    background: #fff;
+}
+
+.user-compare-check input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 1px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.user-compare-check.active input[type="checkbox"]:checked::after {
+    color: var(--primary);
+}
+
+.user-compare-results {
+    padding: 12px 0;
 }
 
 .user-compare-info {
@@ -176,28 +248,44 @@ body {
 
 .user-compare-card {
     flex: 1;
-    min-width: 140px;
-    padding: 12px 16px;
+    min-width: 180px;
+    padding: 16px 18px;
     background: #fafafa;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
+    transition: box-shadow 0.2s;
+}
+
+.user-compare-card:hover {
+    box-shadow: var(--shadow);
 }
 
 .user-compare-card h4 {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
     color: var(--text);
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-light);
 }
 
 .user-compare-stat {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-secondary);
-    line-height: 1.8;
+    line-height: 2;
 }
 
 .user-compare-stat strong {
     color: var(--primary);
+}
+
+.merged-card {
+    border-color: var(--primary);
+    background: #f0f0ff;
+}
+
+.merged-card h4 {
+    border-bottom-color: var(--primary);
 }
 
 .nav {
