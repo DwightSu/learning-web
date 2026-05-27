@@ -45,6 +45,18 @@ const SyncService = {
         return res.json();
     },
 
+    async findExistingGist() {
+        try {
+            const gists = await this._api('GET', '/gists?per_page=100');
+            for (const gist of gists) {
+                if (gist.files && gist.files[this.GIST_FILENAME]) {
+                    return gist.id;
+                }
+            }
+        } catch {}
+        return null;
+    },
+
     async validateToken() {
         if (!this.token) return false;
         try {
@@ -112,6 +124,14 @@ const SyncService = {
         try {
             const valid = await this.validateToken();
             if (!valid) throw new Error('Token 无效或已过期');
+
+            if (!this.gistId) {
+                const found = await this.findExistingGist();
+                if (found) {
+                    this.gistId = found;
+                    localStorage.setItem('learn_gh_gist', this.gistId);
+                }
+            }
 
             const serverData = this.gistId ? await this.pullFromGist() : null;
 
