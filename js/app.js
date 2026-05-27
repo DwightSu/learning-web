@@ -1683,7 +1683,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const valid = await SyncService.validateToken();
         if (valid) {
             document.getElementById('syncModeGroup').style.display = 'flex';
-            await SyncService.syncAll();
+            const mode = document.querySelector('input[name="syncMode"]:checked');
+            if (mode && mode.value === 'pull') {
+                await SyncService.pullOnly();
+            } else if (mode && mode.value === 'push') {
+                await SyncService.pushOnly();
+            } else {
+                await SyncService.syncAll();
+            }
         } else {
             updateSyncUI('error');
             toast('Token 无效，请检查是否具有 gist 权限', 'error');
@@ -1714,11 +1721,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedToken) {
         document.getElementById('githubToken').value = savedToken;
         SyncService.setToken(savedToken);
-        SyncService.validateToken().then(valid => {
+        SyncService.validateToken().then(async (valid) => {
             if (valid) {
                 document.getElementById('syncModeGroup').style.display = 'flex';
-                updateSyncUI('syncing');
-                SyncService.syncAll();
+                SyncService.connected = true;
+                updateSyncUI('connected');
+                toast('Token 已就绪，请选择同步方向后点击同步按钮', '');
             }
         });
     }
