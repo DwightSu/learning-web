@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的学习记录</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">📚 学习轨迹</h1>
+                <p class="subtitle">记录每一次成长</p>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">首页</span>
+                </a>
+                <a href="#" class="nav-item" data-page="timeline">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">学习时间线</span>
+                </a>
+                <a href="#" class="nav-item" data-page="blog">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-text">学习博客</span>
+                </a>
+                <a href="#" class="nav-item" data-page="stats">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">学习统计</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-export" id="exportBtn">📥 导出数据</button>
+                <button class="btn btn-import" id="importBtn">📤 导入数据</button>
+                <input type="file" id="importFile" accept=".json" style="display:none">
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <!-- ========== 首页 Dashboard ========== -->
+            <section class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <h2>🏠 学习首页</h2>
+                    <p class="page-desc">欢迎回来，继续加油！</p>
+                </div>
+                <div class="stats-grid" id="dashboardStats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="statTotalHours">0</div>
+                        <div class="stat-label">总学习时长 (小时)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statTotalSessions">0</div>
+                        <div class="stat-label">学习次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statTotalPosts">0</div>
+                        <div class="stat-label">博客文章</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statStreak">0</div>
+                        <div class="stat-label">连续学习天数</div>
+                    </div>
+                </div>
+                <div class="dashboard-sections">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📌 最近学习</h3>
+                        </div>
+                        <div class="card-body" id="recentSessions">
+                            <p class="empty-msg">还没有学习记录，开始学习吧！</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📌 最新笔记</h3>
+                        </div>
+                        <div class="card-body" id="recentPosts">
+                            <p class="empty-msg">还没有博客文章，写一篇吧！</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== 学习时间线 Timeline ========== -->
+            <section class="page" id="page-timeline">
+                <div class="page-header">
+                    <h2>📅 学习时间线</h2>
+                    <p class="page-desc">记录每一次学习的时间、科目和收获</p>
+                </div>
+
+                <div class="card add-card">
+                    <div class="card-header">
+                        <h3>✏️ 添加学习记录</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="timelineForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="tlDate">日期</label>
+                                    <input type="date" id="tlDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tlSubject">科目</label>
+                                    <select id="tlSubject" required>
+                                        <option value="">选择科目</option>
+                                        <option value="前端开发">前端开发</option>
+                                        <option value="后端开发">后端开发</option>
+                                        <option value="算法与数据结构">算法与数据结构</option>
+                                        <option value="数据库">数据库</option>
+                                        <option value="计算机网络">计算机网络</option>
+                                        <option value="操作系统">操作系统</option>
+                                        <option value="英语">英语</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tlDuration">时长（小时）</label>
+                                    <input type="number" id="tlDuration" min="0.1" max="24" step="0.5" required placeholder="例如: 2">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex:1">
+                                    <label for="tlContent">学习内容 / 心得</label>
+                                    <textarea id="tlContent" rows="3" placeholder="今天学到了什么..." required></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">添加记录</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📋 学习记录列表</h3>
+                        <div class="filter-bar">
+                            <select id="tlFilterSubject">
+                                <option value="all">全部科目</option>
+                                <option value="前端开发">前端开发</option>
+                                <option value="后端开发">后端开发</option>
+                                <option value="算法与数据结构">算法与数据结构</option>
+                                <option value="数据库">数据库</option>
+                                <option value="计算机网络">计算机网络</option>
+                                <option value="操作系统">操作系统</option>
+                                <option value="英语">英语</option>
+                                <option value="其他">其他</option>
+                            </select>
+                            <input type="text" id="tlSearch" placeholder="搜索内容...">
+                        </div>
+                    </div>
+                    <div class="card-body" id="timelineList">
+                        <p class="empty-msg">还没有学习记录</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== 学习博客 Blog ========== -->
+            <section class="page" id="page-blog">
+                <div class="page-header">
+                    <h2>📝 学习博客</h2>
+                    <p class="page-desc">写下一篇学习心得，记录成长的点滴</p>
+                </div>
+
+                <div class="card add-card">
+                    <div class="card-header">
+                        <h3>✏️ 写文章</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="blogForm">
+                            <div class="form-group">
+                                <label for="blogTitle">标题</label>
+                                <input type="text" id="blogTitle" placeholder="给文章起个标题" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="blogTags">标签（逗号分隔）</label>
+                                <input type="text" id="blogTags" placeholder="例如: JavaScript, 前端, 笔记">
+                            </div>
+                            <div class="form-group">
+                                <label for="blogContent">内容 (支持 Markdown 格式)</label>
+                                <textarea id="blogContent" rows="10" placeholder="写下你的学习心得..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">发布文章</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📖 文章列表</h3>
+                        <div class="filter-bar">
+                            <input type="text" id="blogSearch" placeholder="搜索文章标题...">
+                        </div>
+                    </div>
+                    <div class="card-body" id="blogList">
+                        <p class="empty-msg">还没有博客文章</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== 文章详情 (隐藏) ========== -->
+            <section class="page" id="page-blog-detail" style="display:none">
+                <div class="page-header">
+                    <button class="btn btn-back" id="blogBackBtn">← 返回文章列表</button>
+                </div>
+                <div class="card" id="blogDetailContent">
+                </div>
+            </section>
+
+            <!-- ========== 学习统计 Stats ========== -->
+            <section class="page" id="page-stats">
+                <div class="page-header">
+                    <h2>📊 学习统计</h2>
+                    <p class="page-desc">用数据回顾你的学习旅程</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📈 每日学习时长</h3>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartDaily"></canvas>
+                        <p class="empty-msg" id="chartDailyEmpty">还没有足够的数据</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📊 科目分布</h3>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="chartSubjects"></canvas>
+                        <p class="empty-msg" id="chartSubjectsEmpty">还没有足够的数据</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📅 本月学习日历</h3>
+                    </div>
+                    <div class="card-body" id="calendarView">
+                        <p class="empty-msg">还没有学习记录</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
