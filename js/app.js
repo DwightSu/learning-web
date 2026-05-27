@@ -478,7 +478,6 @@ function switchUser(username) {
     renderUserSelect();
     renderAll();
     toast('已切换到用户：' + username);
-    maybeSync();
 }
 
 function addUser() {
@@ -523,7 +522,6 @@ function deleteUser() {
     renderUserSelect();
     renderAll();
     toast('用户"' + username + '"已删除');
-    maybeSync();
 }
 
 function renderAll() {
