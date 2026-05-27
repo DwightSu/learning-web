@@ -10,27 +10,153 @@ const Store = {
     }
 };
 
+function userKey(base) {
+    return base + '_' + state.activeUser;
+}
+
+function loadUserData(username) {
+    state.sessions = Store.get('sessions_' + username, []);
+    state.posts = Store.get('posts_' + username, []);
+    state.gallery = Store.get('gallery_' + username, []);
+}
+
+function saveUserData(username) {
+    Store.set('sessions_' + username, state.sessions);
+    Store.set('posts_' + username, state.posts);
+    Store.set('gallery_' + username, state.gallery);
+}
+
+function saveCurrentUserData() {
+    saveUserData(state.activeUser);
+}
+
+function loadCurrentUserData() {
+    loadUserData(state.activeUser);
+}
+
 let state = {
-    sessions: Store.get('sessions', []),
-    posts: Store.get('posts', []),
-    gallery: Store.get('gallery', []),
+    allUsers: Store.get('allUsers', ['默认用户']),
+    activeUser: Store.get('activeUser', '默认用户'),
+    sessions: [],
+    posts: [],
+    gallery: [],
     currentPage: 'dashboard',
     currentPostId: null,
     calendarYear: new Date().getFullYear(),
     calendarMonth: new Date().getMonth(),
-    isTransitioning: false
+    isTransitioning: false,
+    pomodoro: {
+        totalSeconds: 1500,
+        remainingSeconds: 1500,
+        isRunning: false,
+        isPaused: false,
+        interval: null,
+        subject: ''
+    }
 };
 
+loadCurrentUserData();
+
 function saveSessions() {
-    Store.set('sessions', state.sessions);
+    Store.set('sessions_' + state.activeUser, state.sessions);
 }
 
 function savePosts() {
-    Store.set('posts', state.posts);
+    Store.set('posts_' + state.activeUser, state.posts);
 }
 
 function saveGallery() {
-    Store.set('gallery', state.gallery);
+    Store.set('gallery_' + state.activeUser, state.gallery);
+}
+
+function getAllUserData(username) {
+    return {
+        sessions: Store.get('sessions_' + username, []),
+        posts: Store.get('posts_' + username, [])
+    };
+}
+
+/* ========== User Management ========== */
+function renderUserSelect() {
+    const mainSelect = document.getElementById('userSelect');
+    const statsSelect = document.getElementById('statsUserSelect');
+
+    mainSelect.innerHTML = state.allUsers.map(u =>
+        '<option value="' + u + '"' + (u === state.activeUser ? ' selected' : '') + '>' + u + '</option>'
+    ).join('');
+
+    if (statsSelect) {
+        statsSelect.innerHTML = state.allUsers.map(u =>
+            '<option value="' + u + '"' + (u === state.activeUser ? ' selected' : '') + '>' + u + '</option>'
+        ).join('');
+    }
+}
+
+function switchUser(username) {
+    if (username === state.activeUser) return;
+    if (state.pomodoro.isRunning) {
+        toast('番茄钟正在运行，请先停止', 'error');
+        return;
+    }
+
+    saveCurrentUserData();
+    state.activeUser = username;
+    Store.set('activeUser', username);
+    loadCurrentUserData();
+    renderUserSelect();
+    renderAll();
+    toast('已切换到用户：' + username);
+}
+
+function addUser() {
+    const name = prompt('请输入新用户名：');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (state.allUsers.includes(trimmed)) {
+        toast('该用户已存在', 'error');
+        return;
+    }
+    state.allUsers.push(trimmed);
+    state.allUsers.sort();
+    Store.set('allUsers', state.allUsers);
+    switchUser(trimmed);
+}
+
+function renameUser() {
+    const newName = prompt('请输入新名称（当前：' + state.activeUser + '）：');
+    if (!newName || !newName.trim()) return;
+    const trimmed = newName.trim();
+    if (trimmed === state.activeUser) return;
+    if (state.allUsers.includes(trimmed)) {
+        toast('该名称已被使用', 'error');
+        return;
+    }
+    const oldName = state.activeUser;
+    const idx = state.allUsers.indexOf(oldName);
+    state.allUsers[idx] = trimmed;
+    Store.set('allUsers', state.allUsers);
+
+    const oldData = getAllUserData(oldName);
+    Store.set('sessions_' + trimmed, oldData.sessions);
+    Store.set('posts_' + trimmed, oldData.posts);
+    Store.set('gallery_' + trimmed, Store.get('gallery_' + oldName, []));
+    Store.delKey && Store.delKey('sessions_' + oldName);
+    Store.delKey && Store.delKey('posts_' + oldName);
+    Store.delKey && Store.delKey('gallery_' + oldName);
+
+    state.activeUser = trimmed;
+    Store.set('activeUser', trimmed);
+    renderUserSelect();
+    renderAll();
+    toast('用户已重命名');
+}
+
+function renderAll() {
+    renderDashboard();
+    renderTimeline();
+    renderBlogList();
+    renderGallery();
+    renderStats();
 }
 
 function toast(msg, type) {
@@ -167,11 +293,18 @@ document.getElementById('timelineForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('tlDate').value;
     const subject = document.getElementById('tlSubject').value.trim();
-    const duration = parseFloat(document.getElementById('tlDuration').value);
+    const hours = parseFloat(document.getElementById('tlHours').value) || 0;
+    const minutes = parseFloat(document.getElementById('tlMinutes').value) || 0;
+    const duration = parseFloat((hours + minutes / 60).toFixed(2));
     const content = document.getElementById('tlContent').value.trim();
 
     if (!subject) {
         toast('请输入学习内容', 'error');
+        return;
+    }
+
+    if (duration <= 0) {
+        toast('请输入学习时长', 'error');
         return;
     }
 
@@ -190,6 +323,8 @@ document.getElementById('timelineForm').addEventListener('submit', function(e) {
     renderDashboard();
     this.reset();
     document.getElementById('tlDate').value = todayStr();
+    document.getElementById('tlHours').value = 0;
+    document.getElementById('tlMinutes').value = 0;
     toast('学习记录已添加！', 'success');
 });
 
@@ -547,9 +682,36 @@ function renderDashboard() {
 
 /* ========== Stats ========== */
 function renderStats() {
+    renderUserComparison();
     renderDailyChart();
     renderSubjectChart();
     renderCalendar();
+}
+
+function renderUserComparison() {
+    const container = document.getElementById('statsUserInfo');
+    const select = document.getElementById('statsUserSelect');
+    const selected = Array.from(select.selectedOptions).map(o => o.value);
+
+    const users = selected.length > 0 ? selected : [state.activeUser];
+
+    container.innerHTML = '<div class="user-compare-info">' + users.map(username => {
+        const data = getAllUserData(username);
+        const totalHours = data.sessions.reduce((s, ss) => s + ss.duration, 0);
+        const totalSessions = data.sessions.length;
+        const totalPosts = data.posts.length;
+        const subjects = [...new Set(data.sessions.map(s => s.subject))];
+        const recentDate = data.sessions.length > 0 ? data.sessions.sort((a, b) => b.date.localeCompare(a.date))[0].date : '无';
+
+        return '<div class="user-compare-card">' +
+            '<h4>' + (username === state.activeUser ? '👤 ' : '') + username + '</h4>' +
+            '<div class="user-compare-stat">📚 学习时长：<strong>' + totalHours.toFixed(1) + 'h</strong></div>' +
+            '<div class="user-compare-stat">📅 学习次数：<strong>' + totalSessions + ' 次</strong></div>' +
+            '<div class="user-compare-stat">📝 文章数：<strong>' + totalPosts + ' 篇</strong></div>' +
+            '<div class="user-compare-stat">📖 学习内容：<strong>' + (subjects.length > 0 ? subjects.join('、') : '无') + '</strong></div>' +
+            '<div class="user-compare-stat">🕐 最近学习：<strong>' + recentDate + '</strong></div>' +
+        '</div>';
+    }).join('') + '</div>';
 }
 
 function renderDailyChart() {
@@ -712,7 +874,13 @@ function renderCalendar() {
     const container = document.getElementById('calendarView');
     const { calendarYear: year, calendarMonth: month } = state;
 
-    const sessionDates = new Set(state.sessions.map(s => s.date));
+    const dayStats = {};
+    state.sessions.forEach(s => {
+        if (!dayStats[s.date]) dayStats[s.date] = { total: 0, subjects: {} };
+        dayStats[s.date].total += s.duration;
+        dayStats[s.date].subjects[s.subject] = (dayStats[s.date].subjects[s.subject] || 0) + s.duration;
+    });
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -737,11 +905,28 @@ function renderCalendar() {
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         const isToday = dateStr === today;
-        const hasStudy = sessionDates.has(dateStr);
+        const stats = dayStats[dateStr];
+        const hasStudy = !!stats;
+
         const classes = ['calendar-day'];
         if (isToday) classes.push('today');
         if (hasStudy) classes.push('has-study');
-        html += `<div class="${classes.join(' ')}" data-date="${dateStr}">${d}</div>`;
+
+        let dayHtml = `<div class="${classes.join(' ')}" data-date="${dateStr}">`;
+        dayHtml += `<span class="calendar-day-num">${d}</span>`;
+
+        if (hasStudy) {
+            dayHtml += `<span class="calendar-day-hours">${stats.total.toFixed(1)}h</span>`;
+            dayHtml += '<div class="calendar-tooltip">';
+            dayHtml += `<div class="calendar-tooltip-total">📚 共 ${stats.total.toFixed(1)} 小时</div>`;
+            Object.entries(stats.subjects).sort((a, b) => b[1] - a[1]).forEach(([sub, hrs]) => {
+                dayHtml += `<div class="calendar-tooltip-item"><span>${sub}</span><span>${hrs.toFixed(1)}h</span></div>`;
+            });
+            dayHtml += '</div>';
+        }
+
+        dayHtml += '</div>';
+        html += dayHtml;
     }
 
     html += '</div>';
@@ -758,19 +943,143 @@ function renderCalendar() {
         if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
         renderCalendar();
     });
-
-    container.querySelectorAll('.calendar-day.has-study').forEach(el => {
-        el.addEventListener('click', function() {
-            const date = this.dataset.date;
-            const sessionsOnDay = state.sessions.filter(s => s.date === date);
-            if (sessionsOnDay.length > 0) {
-                const total = sessionsOnDay.reduce((sum, s) => sum + s.duration, 0);
-                const subjects = [...new Set(sessionsOnDay.map(s => s.subject))].join('、');
-                toast(date + ' 学习了 ' + subjects + ' 共 ' + total.toFixed(1) + ' 小时');
-            }
-        });
-    });
 }
+
+/* ========== Pomodoro Timer ========== */
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function updatePomodoroDisplay() {
+    const p = state.pomodoro;
+    document.getElementById('pomodoroTimer').textContent = formatTime(p.remainingSeconds);
+
+    if (p.isRunning && !p.isPaused) {
+        document.getElementById('pomodoroStatus').textContent = '🔴 学习中...';
+        document.querySelector('.pomodoro-body').classList.add('pomodoro-running');
+        document.getElementById('pomodoroStart').style.display = 'none';
+        document.getElementById('pomodoroPause').style.display = '';
+        document.getElementById('pomodoroReset').style.display = '';
+    } else if (p.isPaused) {
+        document.getElementById('pomodoroStatus').textContent = '⏸ 已暂停';
+        document.querySelector('.pomodoro-body').classList.remove('pomodoro-running');
+        document.getElementById('pomodoroStart').textContent = '▶ 继续';
+        document.getElementById('pomodoroStart').style.display = '';
+        document.getElementById('pomodoroPause').style.display = 'none';
+        document.getElementById('pomodoroReset').style.display = '';
+    } else {
+        document.getElementById('pomodoroStatus').textContent = '⏸ 准备开始';
+        document.querySelector('.pomodoro-body').classList.remove('pomodoro-running');
+        document.getElementById('pomodoroStart').textContent = '▶ 开始';
+        document.getElementById('pomodoroStart').style.display = '';
+        document.getElementById('pomodoroPause').style.display = 'none';
+        document.getElementById('pomodoroReset').style.display = 'none';
+    }
+}
+
+function setPomodoroMinutes(mins) {
+    if (state.pomodoro.isRunning) return;
+    state.pomodoro.totalSeconds = mins * 60;
+    state.pomodoro.remainingSeconds = mins * 60;
+    document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('pomodoroCustom').value = '';
+    updatePomodoroDisplay();
+}
+
+document.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const mins = parseInt(this.dataset.minutes);
+        if (state.pomodoro.isRunning) return;
+        state.pomodoro.totalSeconds = mins * 60;
+        state.pomodoro.remainingSeconds = mins * 60;
+        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('pomodoroCustom').value = '';
+        updatePomodoroDisplay();
+    });
+});
+
+document.getElementById('pomodoroCustom').addEventListener('change', function() {
+    const val = parseInt(this.value);
+    if (val && val > 0 && val <= 240) {
+        state.pomodoro.totalSeconds = val * 60;
+        state.pomodoro.remainingSeconds = val * 60;
+        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        updatePomodoroDisplay();
+    }
+});
+
+document.getElementById('pomodoroStart').addEventListener('click', function() {
+    const p = state.pomodoro;
+    const subject = document.getElementById('pomodoroSubject').value.trim();
+
+    if (!p.isPaused && !subject) {
+        toast('请输入学习内容', 'error');
+        document.getElementById('pomodoroSubject').focus();
+        return;
+    }
+
+    p.isRunning = true;
+    p.isPaused = false;
+    p.subject = subject;
+
+    if (p.interval) clearInterval(p.interval);
+    p.interval = setInterval(function() {
+        p.remainingSeconds--;
+        updatePomodoroDisplay();
+
+        if (p.remainingSeconds <= 0) {
+            clearInterval(p.interval);
+            p.interval = null;
+            p.isRunning = false;
+            p.isPaused = false;
+
+            const durationHours = p.totalSeconds / 60 / 60;
+            const session = {
+                id: Date.now(),
+                date: todayStr(),
+                subject: p.subject,
+                duration: parseFloat(durationHours.toFixed(2)),
+                content: '🍅 番茄钟学习完成',
+                createdAt: new Date().toISOString()
+            };
+
+            state.sessions.unshift(session);
+            saveSessions();
+            renderDashboard();
+            renderTimeline();
+            updatePomodoroDisplay();
+            toast('🎉 番茄钟完成！已自动记录到学习时间线', 'success');
+        }
+    }, 1000);
+
+    updatePomodoroDisplay();
+});
+
+document.getElementById('pomodoroPause').addEventListener('click', function() {
+    state.pomodoro.isPaused = true;
+    if (state.pomodoro.interval) {
+        clearInterval(state.pomodoro.interval);
+        state.pomodoro.interval = null;
+    }
+    updatePomodoroDisplay();
+});
+
+document.getElementById('pomodoroReset').addEventListener('click', function() {
+    const p = state.pomodoro;
+    if (p.interval) {
+        clearInterval(p.interval);
+        p.interval = null;
+    }
+    p.isRunning = false;
+    p.isPaused = false;
+    p.remainingSeconds = p.totalSeconds;
+    document.querySelector('.pomodoro-body').classList.remove('pomodoro-running');
+    updatePomodoroDisplay();
+});
 
 /* ========== Export / Import ========== */
 document.getElementById('exportBtn').addEventListener('click', function() {
@@ -825,6 +1134,20 @@ document.getElementById('importFile').addEventListener('change', function(e) {
 /* ========== Init ========== */
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('tlDate').value = todayStr();
+    document.getElementById('tlHours').value = 0;
+    document.getElementById('tlMinutes').value = 0;
+
+    document.getElementById('userSelect').addEventListener('change', function() {
+        switchUser(this.value);
+    });
+
+    document.getElementById('addUserBtn').addEventListener('click', addUser);
+
+    document.getElementById('statsCompareBtn').addEventListener('click', function() {
+        renderUserComparison();
+    });
+
+    renderUserSelect();
 
     document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
     const home = document.getElementById('page-dashboard');
@@ -841,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!state.sessions.length && !state.posts.length) {
         setTimeout(() => {
-            toast('👋 欢迎！在学习时间线中添加第一条记录吧');
+            toast('👋 欢迎 「' + state.activeUser + '」！在学习时间线中添加第一条记录吧');
         }, 500);
     }
 });
