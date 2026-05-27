@@ -10,8 +10,236 @@ const Store = {
     }
 };
 
-function userKey(base) {
-    return base + '_' + state.activeUser;
+/* ========== Sync Service (GitHub Gist) ========== */
+const SyncService = {
+    token: localStorage.getItem('learn_gh_token') || '',
+    gistId: localStorage.getItem('learn_gh_gist') || '',
+    connected: false,
+    lastSyncTime: null,
+    syncInProgress: false,
+    GIST_FILENAME: 'learning-tracker-data.json',
+
+    get _headers() {
+        return {
+            'Authorization': 'token ' + this.token,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+        };
+    },
+
+    setToken(val) {
+        this.token = val;
+        localStorage.setItem('learn_gh_token', val);
+    },
+
+    async _api(method, path, body) {
+        const res = await fetch('https://api.github.com' + path, {
+            method,
+            headers: this._headers,
+            body: body ? JSON.stringify(body) : undefined
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'GitHub API 请求失败 (' + res.status + ')');
+        }
+        return res.json();
+    },
+
+    async validateToken() {
+        if (!this.token) return false;
+        try {
+            const user = await this._api('GET', '/user');
+            return !!user.login;
+        } catch {
+            return false;
+        }
+    },
+
+    _buildData() {
+        const data = {
+            allUsers: state.allUsers,
+            activeUser: state.activeUser,
+            users: {}
+        };
+        for (const username of state.allUsers) {
+            data.users[username] = {
+                sessions: Store.get('sessions_' + username, []),
+                posts: Store.get('posts_' + username, []),
+                gallery: Store.get('gallery_' + username, [])
+            };
+        }
+        return data;
+    },
+
+    _writeToGist(content) {
+        const files = {};
+        files[this.GIST_FILENAME] = { content };
+        if (this.gistId) {
+            return this._api('PATCH', '/gists/' + this.gistId, { files });
+        } else {
+            return this._api('POST', '/gists', {
+                description: '学习记录追踪 - 同步数据',
+                public: false,
+                files
+            });
+        }
+    },
+
+    async pushToGist() {
+        const data = this._buildData();
+        const content = JSON.stringify(data, null, 2);
+        const result = await this._writeToGist(content);
+        if (!this.gistId) {
+            this.gistId = result.id;
+            localStorage.setItem('learn_gh_gist', this.gistId);
+        }
+        return true;
+    },
+
+    async pullFromGist() {
+        if (!this.gistId) return null;
+        const gist = await this._api('GET', '/gists/' + this.gistId);
+        const file = gist.files[this.GIST_FILENAME];
+        if (!file || !file.content) return null;
+        return JSON.parse(file.content);
+    },
+
+    async syncAll() {
+        if (this.syncInProgress) return;
+        this.syncInProgress = true;
+        updateSyncUI('syncing');
+
+        try {
+            const valid = await this.validateToken();
+            if (!valid) throw new Error('Token 无效或已过期');
+
+            const serverData = this.gistId ? await this.pullFromGist() : null;
+
+            let mergedAllUsers = state.allUsers.slice();
+            let mergedActiveUser = state.activeUser;
+
+            if (serverData) {
+                mergedAllUsers = [...new Set([...state.allUsers, ...(serverData.allUsers || [])])].sort();
+                if (serverData.activeUser && serverData.activeUser !== mergedActiveUser) {
+                    mergedActiveUser = serverData.activeUser;
+                }
+            }
+
+            state.allUsers = mergedAllUsers;
+            state.activeUser = mergedActiveUser;
+            Store.set('allUsers', mergedAllUsers);
+            Store.set('activeUser', mergedActiveUser);
+
+            for (const username of mergedAllUsers) {
+                const local = {
+                    sessions: Store.get('sessions_' + username, []),
+                    posts: Store.get('posts_' + username, []),
+                    gallery: Store.get('gallery_' + username, [])
+                };
+                let server = null;
+                if (serverData && serverData.users && serverData.users[username]) {
+                    server = serverData.users[username];
+                }
+
+                const merged = {
+                    sessions: mergeArrays(local.sessions, server ? server.sessions : []),
+                    posts: mergeArrays(local.posts, server ? server.posts : []),
+                    gallery: mergeGallery(local.gallery, server ? server.gallery : [])
+                };
+
+                Store.set('sessions_' + username, merged.sessions);
+                Store.set('posts_' + username, merged.posts);
+                Store.set('gallery_' + username, merged.gallery);
+            }
+
+            await this.pushToGist();
+            loadCurrentUserData();
+
+            this.lastSyncTime = new Date();
+            this.connected = true;
+            updateSyncUI('connected');
+            toast('同步成功！数据已保存到 GitHub Gist', 'success');
+        } catch (e) {
+            this.connected = false;
+            updateSyncUI('error');
+            toast('同步失败：' + e.message, 'error');
+        } finally {
+            this.syncInProgress = false;
+        }
+    },
+
+    async disconnect() {
+        this.connected = false;
+        this.token = '';
+        this.gistId = '';
+        localStorage.removeItem('learn_gh_token');
+        localStorage.removeItem('learn_gh_gist');
+        updateSyncUI('disconnected');
+    }
+};
+
+function mergeArrays(local, server) {
+    const map = new Map();
+    for (const item of [...server, ...local]) {
+        map.set(item.id, item);
+    }
+    return Array.from(map.values()).sort((a, b) => {
+        const dateA = a.createdAt || a.date || '';
+        const dateB = b.createdAt || b.date || '';
+        return dateB.localeCompare(dateA);
+    });
+}
+
+function mergeGallery(local, server) {
+    const map = new Map();
+    for (const item of [...server, ...local]) {
+        map.set(item.id, item);
+    }
+    return Array.from(map.values());
+}
+
+function updateSyncUI(status) {
+    const statusEl = document.getElementById('syncStatus');
+    const bodyEl = document.getElementById('syncBody');
+    const connectBtn = document.getElementById('syncConnectBtn');
+    const syncNowBtn = document.getElementById('syncNowBtn');
+    const infoEl = document.getElementById('syncInfo');
+    const timeEl = document.getElementById('syncLastTime');
+    const gistEl = document.getElementById('syncGistId');
+
+    if (!statusEl) return;
+
+    switch (status) {
+        case 'connected':
+            statusEl.textContent = '已连接';
+            statusEl.className = 'sync-status connected';
+            bodyEl.style.display = 'block';
+            connectBtn.textContent = '断开';
+            syncNowBtn.style.display = 'inline-block';
+            infoEl.style.display = 'block';
+            if (SyncService.lastSyncTime) {
+                timeEl.textContent = '上次同步: ' + formatDateTime(SyncService.lastSyncTime);
+            }
+            if (SyncService.gistId) {
+                gistEl.innerHTML = '<a href="https://gist.github.com/' + SyncService.gistId + '" target="_blank">查看 Gist →</a>';
+            }
+            break;
+        case 'syncing':
+            statusEl.textContent = '同步中...';
+            statusEl.className = 'sync-status syncing';
+            break;
+        case 'error':
+            statusEl.textContent = '连接失败';
+            statusEl.className = 'sync-status error';
+            break;
+        default:
+            statusEl.textContent = '未连接';
+            statusEl.className = 'sync-status';
+            bodyEl.style.display = 'none';
+            connectBtn.textContent = '连接 GitHub';
+            syncNowBtn.style.display = 'none';
+            infoEl.style.display = 'none';
+    }
 }
 
 function loadUserData(username) {
@@ -346,8 +574,8 @@ document.getElementById('timelineForm').addEventListener('submit', function(e) {
     renderDashboard();
     this.reset();
     document.getElementById('tlDate').value = todayStr();
-    document.getElementById('tlHours').value = 0;
-    document.getElementById('tlMinutes').value = 0;
+    document.getElementById('tlHours').value = '0';
+    document.getElementById('tlMinutes').value = '0';
     toast('学习记录已添加！', 'success');
 });
 
@@ -1037,6 +1265,15 @@ function formatTime(seconds) {
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
+function formatDateTime(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return y + '-' + m + '-' + d + ' ' + h + ':' + min;
+}
+
 function updatePomodoroDisplay() {
     const p = state.pomodoro;
     document.getElementById('pomodoroTimer').textContent = formatTime(p.remainingSeconds);
@@ -1219,8 +1456,8 @@ document.getElementById('importFile').addEventListener('change', function(e) {
 /* ========== Init ========== */
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('tlDate').value = todayStr();
-    document.getElementById('tlHours').value = 0;
-    document.getElementById('tlMinutes').value = 0;
+    document.getElementById('tlHours').value = '0';
+    document.getElementById('tlMinutes').value = '0';
 
     /* Mobile sidebar toggle */
     function toggleSidebar(open) {
@@ -1294,6 +1531,56 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             toast('👋 欢迎 「' + state.activeUser + '」！在学习时间线中添加第一条记录吧');
         }, 500);
+    }
+
+    /* Sync */
+    const syncHeader = document.querySelector('.sync-header');
+    const syncBody = document.getElementById('syncBody');
+    syncBody.style.display = 'block';
+    syncHeader.classList.add('expanded');
+
+    syncHeader.addEventListener('click', function() {
+        const isVisible = syncBody.style.display !== 'none';
+        syncBody.style.display = isVisible ? 'none' : 'block';
+        syncHeader.classList.toggle('expanded', !isVisible);
+    });
+
+    document.getElementById('syncConnectBtn').addEventListener('click', async function() {
+        if (SyncService.connected) {
+            await SyncService.disconnect();
+            return;
+        }
+        const token = document.getElementById('githubToken').value.trim();
+        if (!token) {
+            toast('请输入 GitHub Personal Access Token', 'error');
+            return;
+        }
+        SyncService.setToken(token);
+        const valid = await SyncService.validateToken();
+        if (valid) {
+            SyncService.connected = true;
+            await SyncService.syncAll();
+        } else {
+            updateSyncUI('error');
+            toast('Token 无效，请检查是否具有 gist 权限', 'error');
+        }
+    });
+
+    document.getElementById('syncNowBtn').addEventListener('click', function() {
+        SyncService.syncAll();
+    });
+
+    const savedToken = localStorage.getItem('learn_gh_token') || (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : '');
+    if (savedToken) {
+        document.getElementById('githubToken').value = savedToken;
+        SyncService.setToken(savedToken);
+        SyncService.validateToken().then(valid => {
+            if (valid) {
+                SyncService.connected = true;
+                updateSyncUI('connected');
+                SyncService.syncAll();
+            }
+        });
     }
 });
 

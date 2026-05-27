@@ -145,9 +145,26 @@ body {
     gap: 4px;
 }
 
-.duration-inputs input {
-    width: 70px;
+.duration-inputs select {
+    width: 80px;
     text-align: center;
+    text-align-last: center;
+    padding: 10px 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--card-bg);
+    color: var(--text);
+    cursor: pointer;
+    appearance: auto;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.duration-inputs select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
 }
 
 .duration-unit {
@@ -330,6 +347,159 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+/* ========== Sync Section ========== */
+.sync-section {
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+}
+
+.sync-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+}
+
+.sync-header:hover {
+    opacity: 0.8;
+}
+
+.sync-header::after {
+    content: '▸';
+    font-size: 10px;
+    transition: transform 0.2s;
+    opacity: 0.5;
+}
+
+.sync-header.expanded::after {
+    transform: rotate(90deg);
+}
+
+.sync-label {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.sync-status {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+    color: var(--sidebar-text);
+}
+
+.sync-status.connected {
+    background: rgba(16,185,129,0.2);
+    color: #6ee7b7;
+}
+
+.sync-status.syncing {
+    background: rgba(245,158,11,0.2);
+    color: #fcd34d;
+}
+
+.sync-status.error {
+    background: rgba(239,68,68,0.2);
+    color: #fca5a5;
+}
+
+.sync-body {
+    padding: 8px 0 4px;
+}
+
+.sync-url {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.sync-url:focus {
+    border-color: var(--primary-light);
+}
+
+.sync-url::placeholder {
+    color: rgba(255,255,255,0.35);
+}
+
+.sync-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.sync-link {
+    font-size: 11px;
+    color: var(--primary-light);
+    text-decoration: none;
+}
+
+.sync-link:hover {
+    text-decoration: underline;
+}
+
+.sync-hint-text {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+}
+
+.sync-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.sync-actions .btn {
+    flex: 1;
+    padding: 5px 10px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.btn-sync {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-sync-now {
+    background: rgba(255,255,255,0.1);
+    color: var(--sidebar-text);
+}
+
+.sync-info {
+    margin-top: 6px;
+}
+
+.sync-time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+}
+
+.sync-gist {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+}
+
+.sync-gist a {
+    color: var(--primary-light);
+    text-decoration: none;
+}
+
+.sync-gist a:hover {
+    text-decoration: underline;
 }
 
 /* ========== Main Content ========== */
@@ -1537,8 +1707,8 @@ body {
         font-size: 14px;
     }
 
-    .duration-inputs input {
-        width: 60px;
+    .duration-inputs select {
+        width: 70px;
     }
 
     /* Calendar */
