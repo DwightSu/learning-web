@@ -930,12 +930,19 @@ function getCalendarData() {
     var users = compareUsers.length > 0 ? compareUsers : [state.activeUser];
 
     const dayStats = {};
-    users.forEach(username => {
+    users.forEach(function(username) {
         const data = getAllUserData(username);
-        data.sessions.forEach(s => {
-            if (!dayStats[s.date]) dayStats[s.date] = { total: 0, subjects: {} };
+        data.sessions.forEach(function(s) {
+            if (!dayStats[s.date]) {
+                dayStats[s.date] = { total: 0, subjects: {}, users: {} };
+            }
             dayStats[s.date].total += s.duration;
             dayStats[s.date].subjects[s.subject] = (dayStats[s.date].subjects[s.subject] || 0) + s.duration;
+            if (!dayStats[s.date].users[username]) {
+                dayStats[s.date].users[username] = { total: 0, subjects: {} };
+            }
+            dayStats[s.date].users[username].total += s.duration;
+            dayStats[s.date].users[username].subjects[s.subject] = (dayStats[s.date].users[username].subjects[s.subject] || 0) + s.duration;
         });
     });
     return dayStats;
@@ -982,12 +989,24 @@ function renderCalendar() {
         dayHtml += `<span class="calendar-day-num">${d}</span>`;
 
         if (hasStudy) {
-            dayHtml += `<span class="calendar-day-hours">${stats.total.toFixed(1)}h</span>`;
+            dayHtml += '<span class="calendar-day-hours">' + stats.total.toFixed(1) + 'h</span>';
             dayHtml += '<div class="calendar-tooltip">';
-            dayHtml += `<div class="calendar-tooltip-total">📚 共 ${stats.total.toFixed(1)} 小时</div>`;
-            Object.entries(stats.subjects).sort((a, b) => b[1] - a[1]).forEach(([sub, hrs]) => {
-                dayHtml += `<div class="calendar-tooltip-item"><span>${sub}</span><span>${hrs.toFixed(1)}h</span></div>`;
-            });
+            var userKeys = Object.keys(stats.users);
+            if (userKeys.length === 1) {
+                dayHtml += '<div class="calendar-tooltip-total">共 ' + stats.total.toFixed(1) + ' 小时</div>';
+                Object.entries(stats.subjects).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
+                    dayHtml += '<div class="calendar-tooltip-item"><span>' + entry[0] + '</span><span>' + entry[1].toFixed(1) + 'h</span></div>';
+                });
+            } else {
+                dayHtml += '<div class="calendar-tooltip-total">共 ' + stats.total.toFixed(1) + ' 小时</div>';
+                userKeys.forEach(function(username) {
+                    var userData = stats.users[username];
+                    dayHtml += '<div class="calendar-tooltip-user">' + username + '：' + userData.total.toFixed(1) + 'h</div>';
+                    Object.entries(userData.subjects).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
+                        dayHtml += '<div class="calendar-tooltip-item"><span>' + entry[0] + '</span><span>' + entry[1].toFixed(1) + 'h</span></div>';
+                    });
+                });
+            }
             dayHtml += '</div>';
         }
 
