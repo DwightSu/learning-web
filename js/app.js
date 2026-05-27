@@ -216,7 +216,7 @@ const SyncService = {
         }
     },
 
-    async pullOnly() {
+    async pullOnly(silent) {
         if (this.syncInProgress) return;
         this.syncInProgress = true;
         updateSyncUI('syncing');
@@ -257,11 +257,15 @@ const SyncService = {
             this.lastSyncTime = new Date();
             this.connected = true;
             updateSyncUI('connected');
-            toast('云端数据已下载到本机 ✅', 'success');
+            if (!silent) {
+                toast('云端数据已下载到本机 ✅', 'success');
+            }
         } catch (e) {
-            this.connected = false;
-            updateSyncUI('error');
-            toast('下载失败：' + e.message, 'error');
+            if (!silent) {
+                this.connected = false;
+                updateSyncUI('error');
+                toast('下载失败：' + e.message, 'error');
+            }
         } finally {
             this.syncInProgress = false;
         }
@@ -302,7 +306,7 @@ function maybeSync() {
     if (!SyncService.connected || SyncService.syncInProgress) return;
     if (_syncTimer) clearTimeout(_syncTimer);
     _syncTimer = setTimeout(function() {
-        SyncService.syncAll();
+        SyncService.pushOnly();
         _syncTimer = null;
     }, 2000);
 }
@@ -1667,14 +1671,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const valid = await SyncService.validateToken();
         if (valid) {
             document.getElementById('syncModeGroup').style.display = 'flex';
-            const mode = document.querySelector('input[name="syncMode"]:checked');
-            if (mode && mode.value === 'pull') {
-                await SyncService.pullOnly();
-            } else if (mode && mode.value === 'push') {
-                await SyncService.pushOnly();
-            } else {
-                await SyncService.syncAll();
-            }
+            SyncService.connected = true;
+            updateSyncUI('connected');
+            SyncService.pullOnly(true).then(() => {
+                renderUserSelect();
+                renderAll();
+            }).catch(() => {});
         } else {
             updateSyncUI('error');
             toast('Token 无效，请检查是否具有 gist 权限', 'error');
@@ -1710,7 +1712,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('syncModeGroup').style.display = 'flex';
                 SyncService.connected = true;
                 updateSyncUI('connected');
-                toast('Token 已就绪，请选择同步方向后点击同步按钮', '');
+                SyncService.pullOnly(true).then(() => {
+                    renderUserSelect();
+                    renderAll();
+                }).catch(() => {});
             }
         });
     }
