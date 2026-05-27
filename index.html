@@ -48,9 +48,26 @@
                             <a href="https://github.com/settings/tokens" target="_blank" class="sync-link">创建 Token →</a>
                             <span class="sync-hint-text">需 gist 权限</span>
                         </div>
+                        <div class="sync-mode" id="syncModeGroup" style="display:none">
+                            <label class="sync-mode-option active" data-mode="merge">
+                                <input type="radio" name="syncMode" value="merge" checked hidden>
+                                <span class="sync-mode-icon">🔄</span>
+                                <span class="sync-mode-label">合并同步</span>
+                            </label>
+                            <label class="sync-mode-option" data-mode="pull">
+                                <input type="radio" name="syncMode" value="pull" hidden>
+                                <span class="sync-mode-icon">⬇️</span>
+                                <span class="sync-mode-label">下载到本机</span>
+                            </label>
+                            <label class="sync-mode-option" data-mode="push">
+                                <input type="radio" name="syncMode" value="push" hidden>
+                                <span class="sync-mode-icon">⬆️</span>
+                                <span class="sync-mode-label">本机上传</span>
+                            </label>
+                        </div>
                         <div class="sync-actions">
                             <button class="btn btn-sync" id="syncConnectBtn">连接 GitHub</button>
-                            <button class="btn btn-sync-now" id="syncNowBtn" style="display:none">🔄 立即同步</button>
+                            <button class="btn btn-sync-now" id="syncNowBtn" style="display:none">🔄 同步</button>
                         </div>
                         <div class="sync-info" id="syncInfo" style="display:none">
                             <span class="sync-time" id="syncLastTime"></span>

@@ -190,6 +190,90 @@ const SyncService = {
         }
     },
 
+    async pushOnly() {
+        if (this.syncInProgress) return;
+        this.syncInProgress = true;
+        updateSyncUI('syncing');
+
+        try {
+            const valid = await this.validateToken();
+            if (!valid) throw new Error('Token 无效或已过期');
+
+            if (!this.gistId) {
+                const found = await this.findExistingGist();
+                if (found) {
+                    this.gistId = found;
+                    localStorage.setItem('learn_gh_gist', this.gistId);
+                }
+            }
+
+            await this.pushToGist();
+            this.lastSyncTime = new Date();
+            this.connected = true;
+            updateSyncUI('connected');
+            toast('本机数据已上传到云端 ✅', 'success');
+        } catch (e) {
+            this.connected = false;
+            updateSyncUI('error');
+            toast('上传失败：' + e.message, 'error');
+        } finally {
+            this.syncInProgress = false;
+        }
+    },
+
+    async pullOnly() {
+        if (this.syncInProgress) return;
+        this.syncInProgress = true;
+        updateSyncUI('syncing');
+
+        try {
+            const valid = await this.validateToken();
+            if (!valid) throw new Error('Token 无效或已过期');
+
+            if (!this.gistId) {
+                const found = await this.findExistingGist();
+                if (found) {
+                    this.gistId = found;
+                    localStorage.setItem('learn_gh_gist', this.gistId);
+                }
+            }
+
+            if (!this.gistId) throw new Error('云端暂无数据，请先在任一设备上传');
+
+            const serverData = await this.pullFromGist();
+            if (!serverData) throw new Error('云端暂无数据');
+
+            state.allUsers = serverData.allUsers || ['默认用户'];
+            state.activeUser = serverData.activeUser || '默认用户';
+            Store.set('allUsers', state.allUsers);
+            Store.set('activeUser', state.activeUser);
+
+            for (const username of state.allUsers) {
+                const userData = serverData.users && serverData.users[username];
+                if (userData) {
+                    Store.set('sessions_' + username, userData.sessions || []);
+                    Store.set('posts_' + username, userData.posts || []);
+                    Store.set('gallery_' + username, userData.gallery || []);
+                }
+            }
+
+            loadCurrentUserData();
+            renderUserSelect();
+            renderAll();
+
+            this.lastSyncTime = new Date();
+            this.connected = true;
+            updateSyncUI('connected');
+            toast('云端数据已下载到本机 ✅', 'success');
+        } catch (e) {
+            this.connected = false;
+            updateSyncUI('error');
+            toast('下载失败：' + e.message, 'error');
+        } finally {
+            this.syncInProgress = false;
+        }
+    },
+
     async disconnect() {
         this.connected = false;
         this.token = '';
@@ -238,6 +322,7 @@ function updateSyncUI(status) {
     const infoEl = document.getElementById('syncInfo');
     const timeEl = document.getElementById('syncLastTime');
     const gistEl = document.getElementById('syncGistId');
+    const modeGroup = document.getElementById('syncModeGroup');
 
     if (!statusEl) return;
 
@@ -249,6 +334,7 @@ function updateSyncUI(status) {
             connectBtn.textContent = '断开';
             syncNowBtn.style.display = 'inline-block';
             infoEl.style.display = 'block';
+            if (modeGroup) modeGroup.style.display = 'flex';
             if (SyncService.lastSyncTime) {
                 timeEl.textContent = '上次同步: ' + formatDateTime(SyncService.lastSyncTime);
             }
@@ -271,6 +357,7 @@ function updateSyncUI(status) {
             connectBtn.textContent = '连接 GitHub';
             syncNowBtn.style.display = 'none';
             infoEl.style.display = 'none';
+            if (modeGroup) modeGroup.style.display = 'none';
     }
 }
 
@@ -1595,6 +1682,7 @@ document.addEventListener('DOMContentLoaded', function() {
         SyncService.setToken(token);
         const valid = await SyncService.validateToken();
         if (valid) {
+            document.getElementById('syncModeGroup').style.display = 'flex';
             await SyncService.syncAll();
         } else {
             updateSyncUI('error');
@@ -1603,7 +1691,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('syncNowBtn').addEventListener('click', function() {
-        SyncService.syncAll();
+        const mode = document.querySelector('input[name="syncMode"]:checked');
+        if (!mode) return SyncService.syncAll();
+        switch (mode.value) {
+            case 'pull': SyncService.pullOnly(); break;
+            case 'push': SyncService.pushOnly(); break;
+            default: SyncService.syncAll();
+        }
+    });
+
+    document.querySelectorAll('.sync-mode-option').forEach(function(opt) {
+        opt.addEventListener('click', function() {
+            document.querySelectorAll('.sync-mode-option').forEach(function(o) {
+                o.classList.remove('active');
+            });
+            this.classList.add('active');
+            this.querySelector('input[type="radio"]').checked = true;
+        });
     });
 
     const savedToken = localStorage.getItem('learn_gh_token') || (typeof GITHUB_TOKEN !== 'undefined' ? GITHUB_TOKEN : '');
@@ -1612,6 +1716,7 @@ document.addEventListener('DOMContentLoaded', function() {
         SyncService.setToken(savedToken);
         SyncService.validateToken().then(valid => {
             if (valid) {
+                document.getElementById('syncModeGroup').style.display = 'flex';
                 updateSyncUI('syncing');
                 SyncService.syncAll();
             }
