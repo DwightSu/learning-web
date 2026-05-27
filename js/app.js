@@ -1520,10 +1520,18 @@ document.getElementById('pomodoroReset').addEventListener('click', function() {
 /* ========== Export / Import ========== */
 document.getElementById('exportBtn').addEventListener('click', function() {
     const data = {
-        sessions: state.sessions,
-        posts: state.posts,
+        allUsers: state.allUsers,
+        activeUser: state.activeUser,
+        users: {},
         exportedAt: new Date().toISOString()
     };
+    for (const username of state.allUsers) {
+        data.users[username] = {
+            sessions: Store.get('sessions_' + username, []),
+            posts: Store.get('posts_' + username, []),
+            gallery: Store.get('gallery_' + username, [])
+        };
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1531,7 +1539,7 @@ document.getElementById('exportBtn').addEventListener('click', function() {
     a.download = 'learning-data-backup-' + todayStr() + '.json';
     a.click();
     URL.revokeObjectURL(url);
-    toast('数据导出成功！');
+    toast('数据导出成功！共 ' + state.allUsers.length + ' 个用户');
 });
 
 document.getElementById('importBtn').addEventListener('click', function() {
@@ -1546,19 +1554,46 @@ document.getElementById('importFile').addEventListener('change', function(e) {
     reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            if (data.sessions && Array.isArray(data.sessions)) {
+
+            if (data.allUsers && data.users) {
+                state.allUsers = data.allUsers;
+                state.activeUser = data.activeUser || data.allUsers[0];
+                Store.set('allUsers', state.allUsers);
+                Store.set('activeUser', state.activeUser);
+
+                for (const username of state.allUsers) {
+                    const userData = data.users[username];
+                    if (userData) {
+                        Store.set('sessions_' + username, userData.sessions || []);
+                        Store.set('posts_' + username, userData.posts || []);
+                        Store.set('gallery_' + username, userData.gallery || []);
+                    }
+                }
+
+                loadCurrentUserData();
+                renderUserSelect();
+                renderAll();
+
+                let totalSessions = 0;
+                let totalPosts = 0;
+                state.allUsers.forEach(function(u) {
+                    const d = Store.get('sessions_' + u, []);
+                    totalSessions += d.length;
+                    totalPosts += Store.get('posts_' + u, []).length;
+                });
+                toast('导入成功！' + state.allUsers.length + ' 个用户，' + totalSessions + ' 条学习记录，' + totalPosts + ' 篇文章', 'success');
+            } else if (data.sessions) {
                 state.sessions = data.sessions;
                 saveSessions();
+                if (data.posts) {
+                    state.posts = data.posts;
+                    savePosts();
+                }
+                renderAll();
+                toast('导入成功！共 ' + state.sessions.length + ' 条学习记录，' + state.posts.length + ' 篇文章', 'success');
+            } else {
+                throw new Error('无效的数据格式');
             }
-            if (data.posts && Array.isArray(data.posts)) {
-                state.posts = data.posts;
-                savePosts();
-            }
-            renderDashboard();
-            renderTimeline();
-            renderBlogList();
-            renderStats();
-            toast('数据导入成功！共 ' + state.sessions.length + ' 条学习记录，' + state.posts.length + ' 篇文章', 'success');
         } catch (err) {
             toast('导入失败：文件格式不正确', 'error');
         }
@@ -1620,11 +1655,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addUserBtn').addEventListener('click', addUser);
 
     document.getElementById('delUserBtn').addEventListener('click', deleteUser);
-
-    document.getElementById('statsCompareBtn').addEventListener('click', function() {
-        renderUserComparison();
-        renderCalendar();
-    });
 
     renderUserSelect();
 
