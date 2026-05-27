@@ -220,6 +220,16 @@ function mergeGallery(local, server) {
     return Array.from(map.values());
 }
 
+let _syncTimer = null;
+function maybeSync() {
+    if (!SyncService.connected || SyncService.syncInProgress) return;
+    if (_syncTimer) clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(function() {
+        SyncService.syncAll();
+        _syncTimer = null;
+    }, 2000);
+}
+
 function updateSyncUI(status) {
     const statusEl = document.getElementById('syncStatus');
     const bodyEl = document.getElementById('syncBody');
@@ -309,14 +319,17 @@ loadCurrentUserData();
 
 function saveSessions() {
     Store.set('sessions_' + state.activeUser, state.sessions);
+    maybeSync();
 }
 
 function savePosts() {
     Store.set('posts_' + state.activeUser, state.posts);
+    maybeSync();
 }
 
 function saveGallery() {
     Store.set('gallery_' + state.activeUser, state.gallery);
+    maybeSync();
 }
 
 function getAllUserData(username) {
@@ -378,6 +391,7 @@ function switchUser(username) {
     renderUserSelect();
     renderAll();
     toast('已切换到用户：' + username);
+    maybeSync();
 }
 
 function addUser() {
@@ -422,6 +436,7 @@ function deleteUser() {
     renderUserSelect();
     renderAll();
     toast('用户"' + username + '"已删除');
+    maybeSync();
 }
 
 function renderAll() {
