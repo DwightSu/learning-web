@@ -178,6 +178,8 @@ const SyncService = {
             this.lastSyncTime = new Date();
             this.connected = true;
             updateSyncUI('connected');
+            renderUserSelect();
+            renderAll();
             toast('同步成功！数据已保存到 GitHub Gist', 'success');
         } catch (e) {
             this.connected = false;
@@ -1578,7 +1580,6 @@ document.addEventListener('DOMContentLoaded', function() {
         SyncService.setToken(token);
         const valid = await SyncService.validateToken();
         if (valid) {
-            SyncService.connected = true;
             await SyncService.syncAll();
         } else {
             updateSyncUI('error');
@@ -1596,8 +1597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         SyncService.setToken(savedToken);
         SyncService.validateToken().then(valid => {
             if (valid) {
-                SyncService.connected = true;
-                updateSyncUI('connected');
+                updateSyncUI('syncing');
                 SyncService.syncAll();
             }
         });
