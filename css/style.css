@@ -1372,42 +1372,383 @@ body {
     font-size: 14px;
 }
 
+/* ========== Mobile Header ========== */
+.mobile-header {
+    display: none;
+}
+
+.mobile-menu-btn {
+    display: none;
+}
+
+.mobile-title {
+    display: none;
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--sidebar-bg);
+        color: #fff;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .mobile-menu-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+
+    .mobile-title {
+        display: block;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    /* Sidebar as drawer */
     .sidebar {
         transform: translateX(-100%);
-        width: 100%;
+        width: 280px;
+        z-index: 200;
+        transition: transform 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.2);
     }
 
     .sidebar.open {
         transform: translateX(0);
     }
 
+    .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 199;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-backdrop.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .sidebar-header {
+        padding: 20px 16px 12px;
+    }
+
+    .sidebar-header .logo {
+        font-size: 18px;
+    }
+
+    .nav-item {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
     .main-content {
         margin-left: 0;
-        padding: 20px 16px;
+        padding: 64px 12px 24px;
+    }
+
+    .page-header h2 {
+        font-size: 22px;
+    }
+
+    .page-header {
+        margin-bottom: 16px;
     }
 
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 14px 10px;
+    }
+
+    .stat-number {
+        font-size: 24px;
+    }
+
+    .stat-label {
+        font-size: 12px;
     }
 
     .dashboard-sections {
         grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .card {
+        margin-bottom: 14px;
+    }
+
+    .card-header {
+        padding: 12px 14px;
+    }
+
+    .card-header h3 {
+        font-size: 15px;
+    }
+
+    .card-body {
+        padding: 14px;
     }
 
     .form-row {
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .duration-inputs input {
+        width: 60px;
+    }
+
+    /* Calendar */
+    .calendar-day {
+        min-height: 36px;
+        padding: 4px 2px;
+        font-size: 12px;
+    }
+
+    .calendar-day-num {
+        font-size: 12px;
+    }
+
+    .calendar-day-hours {
+        font-size: 8px;
+    }
+
+    .calendar-weekday {
+        font-size: 11px;
+        padding: 4px 0;
+    }
+
+    .calendar-grid {
+        gap: 2px;
+    }
+
+    .calendar-tooltip {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+
+    /* Gallery */
+    .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .gallery-item img {
+        height: 90px;
+    }
+
+    .gallery-insert-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Charts */
+    .chart-container {
+        min-height: 180px;
+    }
+
+    .chart-container canvas {
+        height: 180px !important;
+    }
+
+    /* Pomodoro */
+    .pomodoro-timer {
+        font-size: 42px;
+    }
+
+    .pomodoro-presets {
+        flex-wrap: wrap;
+    }
+
+    .btn-preset {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .pomodoro-custom-input {
+        width: 80px;
+    }
+
+    /* User compare */
+    .user-compare-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .user-compare-checks {
+        flex-wrap: wrap;
+    }
+
+    .user-compare-check {
+        font-size: 12px;
+        padding: 4px 10px 4px 6px;
+    }
+
+    .user-compare-card {
+        min-width: 100%;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .filter-bar input,
+    .filter-bar select {
+        width: 100%;
+    }
+
+    /* Blog */
+    .blog-post-title {
+        font-size: 16px;
+    }
+
+    .blog-detail-title {
+        font-size: 20px;
+    }
+
+    .blog-detail-content {
+        font-size: 14px;
+    }
+
+    /* Editor */
+    .editor-group textarea {
+        min-height: 150px;
+    }
+
+    .editor-toolbar {
+        flex-wrap: wrap;
+    }
+
+    /* Timeline */
+    .timeline-item {
+        padding: 12px;
+    }
+
+    .timeline-item-header {
+        font-size: 13px;
+    }
+
+    /* Toast */
+    .toast {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        text-align: center;
+        border-radius: var(--radius-sm);
+    }
+
+    /* Empty msg */
+    .empty-msg {
+        padding: 20px 12px;
+        font-size: 13px;
+    }
+
+    /* Stats subject chart */
+    #chartSubjects {
+        height: 200px !important;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
     }
 
     .stat-number {
-        font-size: 26px;
+        font-size: 20px;
+    }
+
+    .stat-card {
+        padding: 10px 8px;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+
+    .gallery-item img {
+        height: 70px;
+    }
+
+    .pomodoro-timer {
+        font-size: 36px;
+    }
+
+    .card-header {
+        padding: 10px 12px;
+    }
+
+    .card-body {
+        padding: 12px;
+    }
+
+    .main-content {
+        padding: 60px 8px 16px;
+    }
+
+    .calendar-grid {
+        gap: 1px;
+    }
+
+    .calendar-day {
+        min-height: 32px;
+        padding: 3px 1px;
+        font-size: 11px;
     }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .main-content {
+        padding: 32px 24px;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
