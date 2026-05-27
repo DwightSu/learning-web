@@ -13,10 +13,12 @@ const Store = {
 let state = {
     sessions: Store.get('sessions', []),
     posts: Store.get('posts', []),
+    gallery: Store.get('gallery', []),
     currentPage: 'dashboard',
     currentPostId: null,
     calendarYear: new Date().getFullYear(),
-    calendarMonth: new Date().getMonth()
+    calendarMonth: new Date().getMonth(),
+    isTransitioning: false
 };
 
 function saveSessions() {
@@ -25,6 +27,10 @@ function saveSessions() {
 
 function savePosts() {
     Store.set('posts', state.posts);
+}
+
+function saveGallery() {
+    Store.set('gallery', state.gallery);
 }
 
 function toast(msg, type) {
@@ -68,8 +74,12 @@ function renderMarkdown(text) {
         .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
         .replace(/<\/ul>\s*<ul>/g, '')
         .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-        .replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1">')
-        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, function(match, alt, url) {
+            if (url.startsWith('http') || url.startsWith('data:')) {
+                return '<a href="' + url + '" target="_blank">' + alt + '</a>';
+            }
+            return match;
+        })
         .replace(/\n/g, '<br>')
         .replace(/<br><br>/g, '</p><p>')
         .replace(/<li>/g, '<br><li>');
@@ -78,29 +88,54 @@ function renderMarkdown(text) {
     html = html.replace(/<p><\/p>/g, '');
     html = html.replace(/<br><\/ul>/g, '</ul>');
     html = html.replace(/<ul><br>/g, '<ul>');
+
+    html = html.replace(/!\[(.+?)\]\((.+?)\)/g, function(match, alt, id) {
+        const img = state.gallery.find(g => g.id === parseFloat(id));
+        if (img) {
+            return '<img src="' + img.data + '" alt="' + alt + '" style="max-width:100%">';
+        }
+        return match;
+    });
+
     return html;
 }
 
 /* ========== Navigation ========== */
 function navigate(page, data) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    if (state.isTransitioning || state.currentPage === page) return;
+    state.isTransitioning = true;
+
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-    const target = document.getElementById('page-' + page);
-    if (target) {
-        target.classList.add('active');
-        target.style.display = 'block';
-    }
-
     const navItem = document.querySelector('.nav-item[data-page="' + page + '"]');
     if (navItem) navItem.classList.add('active');
 
-    state.currentPage = page;
+    const current = document.getElementById('page-' + state.currentPage);
+    const target = document.getElementById('page-' + page);
 
-    if (page === 'dashboard') renderDashboard();
-    else if (page === 'timeline') renderTimeline();
-    else if (page === 'blog') renderBlogList();
-    else if (page === 'stats') renderStats();
+    if (current) {
+        current.classList.remove('active');
+        current.classList.add('leaving');
+    }
+
+    setTimeout(() => {
+        if (current) {
+            current.classList.remove('leaving');
+            current.style.display = 'none';
+        }
+
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active');
+        }
+
+        state.currentPage = page;
+        state.isTransitioning = false;
+
+        if (page === 'dashboard') renderDashboard();
+        else if (page === 'timeline') renderTimeline();
+        else if (page === 'blog') { renderBlogList(); renderGallery(); }
+        else if (page === 'stats') renderStats();
+    }, 250);
 }
 
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -111,9 +146,20 @@ document.querySelectorAll('.nav-item').forEach(item => {
 });
 
 document.getElementById('blogBackBtn').addEventListener('click', function() {
-    document.getElementById('page-blog-detail').style.display = 'none';
-    document.getElementById('page-blog').style.display = '';
-    navigate('blog');
+    const detail = document.getElementById('page-blog-detail');
+    const blog = document.getElementById('page-blog');
+
+    detail.classList.remove('active');
+    detail.classList.add('leaving');
+
+    setTimeout(() => {
+        detail.classList.remove('leaving');
+        detail.style.display = 'none';
+        blog.style.display = 'block';
+        blog.classList.add('active');
+        renderBlogList();
+        renderGallery();
+    }, 250);
 });
 
 /* ========== Timeline ========== */
@@ -220,33 +266,131 @@ document.getElementById('blogForm').addEventListener('submit', function(e) {
 
 document.getElementById('blogSearch').addEventListener('input', renderBlogList);
 
-/* ========== Blog Image Upload ========== */
+/* ========== Blog Image Insert ========== */
 document.getElementById('blogImageBtn').addEventListener('click', function() {
-    document.getElementById('blogImageInput').click();
+    if (state.gallery.length === 0) {
+        toast('图库中没有图片，请先上传', 'error');
+        return;
+    }
+    const textarea = document.getElementById('blogContent');
+    const cursorPos = textarea.selectionStart;
+    let menuHtml = '<div class="gallery-insert-modal"><div class="gallery-insert-header">选择要插入的图片</div><div class="gallery-insert-grid">';
+    state.gallery.forEach(img => {
+        menuHtml += `<div class="gallery-insert-item" data-id="${img.id}">
+            <img src="${img.data}" alt="${img.name}">
+            <span>${img.name}</span>
+        </div>`;
+    });
+    menuHtml += '</div><button class="btn btn-back" id="galleryInsertClose">取消</button></div>';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'gallery-overlay';
+    overlay.innerHTML = menuHtml;
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll('.gallery-insert-item').forEach(el => {
+        el.addEventListener('click', function() {
+            const id = parseInt(this.dataset.id);
+            const img = state.gallery.find(g => g.id === id);
+            if (img) {
+                const markdown = '\n![' + img.name + '](' + img.id + ')\n';
+                const text = textarea.value;
+                textarea.value = text.substring(0, cursorPos) + markdown + text.substring(cursorPos);
+                toast('图片引用已插入');
+            }
+            overlay.remove();
+        });
+    });
+
+    document.getElementById('galleryInsertClose').addEventListener('click', function() {
+        overlay.remove();
+    });
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+    });
 });
 
-document.getElementById('blogImageInput').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+/* ========== Image Gallery ========== */
+document.getElementById('galleryUploadBtn').addEventListener('click', function() {
+    document.getElementById('galleryFileInput').click();
+});
 
-    if (file.size > 5 * 1024 * 1024) {
-        toast('图片不能超过 5MB', 'error');
-        this.value = '';
+document.getElementById('galleryFileInput').addEventListener('change', function(e) {
+    const files = e.target.files;
+    if (!files.length) return;
+
+    Array.from(files).forEach(file => {
+        if (file.size > 5 * 1024 * 1024) {
+            toast(file.name + ' 超过 5MB，已跳过', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const img = {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                data: ev.target.result,
+                addedAt: new Date().toISOString()
+            };
+            state.gallery.push(img);
+            saveGallery();
+            renderGallery();
+            toast(file.name + ' 上传成功', 'success');
+        };
+        reader.readAsDataURL(file);
+    });
+    this.value = '';
+});
+
+function renderGallery() {
+    const container = document.getElementById('imageGallery');
+    if (state.gallery.length === 0) {
+        container.innerHTML = '<p class="empty-msg">还没有上传图片，上传后可直接复制 Markdown 引用到文章中</p>';
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-        const textarea = document.getElementById('blogContent');
-        const imgMarkdown = '\n![' + file.name + '](' + ev.target.result + ')\n';
-        const cursorPos = textarea.selectionStart;
-        const text = textarea.value;
-        textarea.value = text.substring(0, cursorPos) + imgMarkdown + text.substring(cursorPos);
-        toast('图片已插入到文章中');
-    };
-    reader.readAsDataURL(file);
-    this.value = '';
-});
+    container.innerHTML = '<div class="gallery-grid">' + state.gallery.map(img =>
+        '<div class="gallery-item">' +
+            '<img src="' + img.data + '" alt="' + img.name + '">' +
+            '<div class="gallery-item-info">' +
+                '<div class="gallery-item-name">' + img.name + '</div>' +
+                '<div class="gallery-item-actions">' +
+                    '<button class="gallery-copy-btn" data-id="' + img.id + '">📋 复制引用</button>' +
+                    '<button class="gallery-delete-btn" data-id="' + img.id + '">✕</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>'
+    ).join('') + '</div>';
+
+    container.querySelectorAll('.gallery-copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = parseFloat(this.dataset.id);
+            const img = state.gallery.find(g => g.id === id);
+            if (img) {
+                const markdown = '![' + img.name + '](' + img.id + ')';
+                navigator.clipboard.writeText(markdown).then(() => {
+                    toast('已复制 Markdown 引用，粘贴到文章即可');
+                }).catch(() => {
+                    toast('复制失败，请手动复制');
+                });
+            }
+        });
+    });
+
+    container.querySelectorAll('.gallery-delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = parseFloat(this.dataset.id);
+            if (confirm('确定删除这张图片吗？')) {
+                state.gallery = state.gallery.filter(g => g.id !== id);
+                saveGallery();
+                renderGallery();
+                toast('图片已删除');
+            }
+        });
+    });
+}
 
 function renderBlogList() {
     const container = document.getElementById('blogList');
@@ -304,23 +448,32 @@ function showBlogDetail(id) {
     if (!post) return;
 
     state.currentPostId = id;
-    document.getElementById('page-blog').style.display = 'none';
+    const blogPage = document.getElementById('page-blog');
     const detailPage = document.getElementById('page-blog-detail');
-    detailPage.style.display = 'block';
-    detailPage.classList.add('active');
 
-    const tagsHtml = post.tags.map(t => `<span class="blog-post-tag">${t}</span>`).join('');
+    blogPage.classList.remove('active');
+    blogPage.classList.add('leaving');
 
-    document.getElementById('blogDetailContent').innerHTML = `
-        <div class="card-body">
-            <div class="blog-detail-title">${post.title}</div>
-            <div class="blog-detail-meta">
-                <span>📅 ${formatDate(post.date)}</span>
-                ${tagsHtml ? '<span class="blog-post-tags">' + tagsHtml + '</span>' : ''}
+    setTimeout(() => {
+        blogPage.classList.remove('leaving');
+        blogPage.style.display = 'none';
+
+        detailPage.style.display = 'block';
+        detailPage.classList.add('active');
+
+        const tagsHtml = post.tags.map(t => `<span class="blog-post-tag">${t}</span>`).join('');
+
+        document.getElementById('blogDetailContent').innerHTML = `
+            <div class="card-body">
+                <div class="blog-detail-title">${post.title}</div>
+                <div class="blog-detail-meta">
+                    <span>📅 ${formatDate(post.date)}</span>
+                    ${tagsHtml ? '<span class="blog-post-tags">' + tagsHtml + '</span>' : ''}
+                </div>
+                <div class="blog-detail-content">${renderMarkdown(post.content)}</div>
             </div>
-            <div class="blog-detail-content">${renderMarkdown(post.content)}</div>
-        </div>
-    `;
+        `;
+    }, 250);
 }
 
 /* ========== Dashboard ========== */
@@ -672,9 +825,18 @@ document.getElementById('importFile').addEventListener('change', function(e) {
 /* ========== Init ========== */
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('tlDate').value = todayStr();
+
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    const home = document.getElementById('page-dashboard');
+    home.style.display = 'block';
+    home.classList.add('active');
+
+    state.currentPage = 'dashboard';
+
     renderDashboard();
     renderTimeline();
     renderBlogList();
+    renderGallery();
     renderStats();
 
     if (!state.sessions.length && !state.posts.length) {

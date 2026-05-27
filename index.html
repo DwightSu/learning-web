@@ -166,17 +166,28 @@
                                 <label for="blogTags">标签（逗号分隔）</label>
                                 <input type="text" id="blogTags" placeholder="例如: JavaScript, 前端, 笔记">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group editor-group">
                                 <label for="blogContent">内容 (支持 Markdown 格式)</label>
-                                <textarea id="blogContent" rows="10" placeholder="写下你的学习心得..." required></textarea>
                                 <div class="editor-toolbar">
-                                    <button type="button" class="btn btn-toolbar" id="blogImageBtn">🖼️ 插入图片</button>
+                                    <button type="button" class="btn btn-toolbar" id="blogImageBtn">🖼️ 从图库插入</button>
                                     <input type="file" id="blogImageInput" accept="image/*" style="display:none">
-                                    <span class="toolbar-hint">支持 Markdown 语法：**加粗** *斜体* `代码` 等等</span>
+                                    <span class="toolbar-hint">支持 **加粗** *斜体* `代码`</span>
                                 </div>
+                                <textarea id="blogContent" rows="10" placeholder="写下你的学习心得..." required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">发布文章</button>
                         </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🖼️ 图片管理</h3>
+                        <button type="button" class="btn btn-toolbar" id="galleryUploadBtn">📤 上传新图片</button>
+                        <input type="file" id="galleryFileInput" accept="image/*" style="display:none">
+                    </div>
+                    <div class="card-body" id="imageGallery">
+                        <p class="empty-msg">还没有上传图片，上传后可直接复制 Markdown 引用到文章中</p>
                     </div>
                 </div>
 

@@ -210,18 +210,201 @@ body {
 
 .page.active {
     display: block;
-    animation: pageIn 0.35s ease;
+    animation: pageFadeIn 0.4s ease;
 }
 
-@keyframes pageIn {
+.page.leaving {
+    display: block;
+    animation: pageFadeOut 0.25s ease forwards;
+}
+
+@keyframes pageFadeIn {
     from {
         opacity: 0;
-        transform: translateY(16px);
+        transform: translateY(12px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+@keyframes pageFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ========== Blog editor ========== */
+.editor-group {
+    margin-bottom: 12px;
+}
+
+.editor-group textarea {
+    min-height: 200px;
+}
+
+/* ========== Image Gallery ========== */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.gallery-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #fafafa;
+    transition: box-shadow 0.2s;
+}
+
+.gallery-item:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    background: #f3f4f6;
+}
+
+.gallery-item-info {
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+}
+
+.gallery-item-name {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+
+.gallery-item-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.gallery-copy-btn {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 11px;
+    background: #eef2ff;
+    color: var(--primary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.gallery-copy-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+.gallery-delete-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.gallery-delete-btn:hover {
+    color: var(--danger);
+    background: #fef2f2;
+}
+
+/* ========== Gallery Insert Overlay ========== */
+.gallery-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+}
+
+.gallery-insert-modal {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+}
+
+.gallery-insert-header {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.gallery-insert-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.gallery-insert-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.gallery-insert-item:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(79,70,229,0.15);
+}
+
+.gallery-insert-item img {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+}
+
+.gallery-insert-item span {
+    display: block;
+    padding: 4px 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ========== Form ========== */
