@@ -739,7 +739,7 @@ function renderUserComparison() {
         '</div>';
 
         mergedSessions = mergedSessions.concat(data.sessions);
-        data.subjects.forEach(s => mergedSubjects.add(s));
+        subjects.forEach(s => mergedSubjects.add(s));
         mergedPosts = mergedPosts.concat(data.posts);
     });
 
