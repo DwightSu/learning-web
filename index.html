@@ -88,7 +88,7 @@
             <section class="page" id="page-timeline">
                 <div class="page-header">
                     <h2>📅 学习时间线</h2>
-                    <p class="page-desc">记录每一次学习的时间、科目和收获</p>
+                    <p class="page-desc">记录每一次学习的时间、内容和收获</p>
                 </div>
 
                 <div class="card add-card">
@@ -103,27 +103,26 @@
                                     <input type="date" id="tlDate" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="tlSubject">科目</label>
-                                    <select id="tlSubject" required>
-                                        <option value="">选择科目</option>
-                                        <option value="前端开发">前端开发</option>
-                                        <option value="后端开发">后端开发</option>
-                                        <option value="算法与数据结构">算法与数据结构</option>
-                                        <option value="数据库">数据库</option>
-                                        <option value="计算机网络">计算机网络</option>
-                                        <option value="操作系统">操作系统</option>
-                                        <option value="英语">英语</option>
-                                        <option value="其他">其他</option>
-                                    </select>
+                                    <label for="tlSubject">学习内容</label>
+                                    <input type="text" id="tlSubject" list="subjectSuggestions" placeholder="输入或选择学习内容" required>
+                                    <datalist id="subjectSuggestions">
+                                        <option value="前端开发">
+                                        <option value="后端开发">
+                                        <option value="算法与数据结构">
+                                        <option value="数据库">
+                                        <option value="计算机网络">
+                                        <option value="操作系统">
+                                        <option value="英语">
+                                    </datalist>
                                 </div>
                                 <div class="form-group">
                                     <label for="tlDuration">时长（小时）</label>
-                                    <input type="number" id="tlDuration" min="0.1" max="24" step="0.5" required placeholder="例如: 2">
+                                    <input type="number" id="tlDuration" min="0.1" max="24" step="0.1" required placeholder="例如: 2">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group" style="flex:1">
-                                    <label for="tlContent">学习内容 / 心得</label>
+                                    <label for="tlContent">学习心得</label>
                                     <textarea id="tlContent" rows="3" placeholder="今天学到了什么..." required></textarea>
                                 </div>
                             </div>
@@ -136,18 +135,8 @@
                     <div class="card-header">
                         <h3>📋 学习记录列表</h3>
                         <div class="filter-bar">
-                            <select id="tlFilterSubject">
-                                <option value="all">全部科目</option>
-                                <option value="前端开发">前端开发</option>
-                                <option value="后端开发">后端开发</option>
-                                <option value="算法与数据结构">算法与数据结构</option>
-                                <option value="数据库">数据库</option>
-                                <option value="计算机网络">计算机网络</option>
-                                <option value="操作系统">操作系统</option>
-                                <option value="英语">英语</option>
-                                <option value="其他">其他</option>
-                            </select>
-                            <input type="text" id="tlSearch" placeholder="搜索内容...">
+                            <input type="text" id="tlFilterSubject" placeholder="筛选学习内容...">
+                            <input type="text" id="tlSearch" placeholder="搜索心得...">
                         </div>
                     </div>
                     <div class="card-body" id="timelineList">
@@ -180,6 +169,11 @@
                             <div class="form-group">
                                 <label for="blogContent">内容 (支持 Markdown 格式)</label>
                                 <textarea id="blogContent" rows="10" placeholder="写下你的学习心得..." required></textarea>
+                                <div class="editor-toolbar">
+                                    <button type="button" class="btn btn-toolbar" id="blogImageBtn">🖼️ 插入图片</button>
+                                    <input type="file" id="blogImageInput" accept="image/*" style="display:none">
+                                    <span class="toolbar-hint">支持 Markdown 语法：**加粗** *斜体* `代码` 等等</span>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-primary">发布文章</button>
                         </form>

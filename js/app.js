@@ -120,9 +120,14 @@ document.getElementById('blogBackBtn').addEventListener('click', function() {
 document.getElementById('timelineForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const date = document.getElementById('tlDate').value;
-    const subject = document.getElementById('tlSubject').value;
+    const subject = document.getElementById('tlSubject').value.trim();
     const duration = parseFloat(document.getElementById('tlDuration').value);
     const content = document.getElementById('tlContent').value.trim();
+
+    if (!subject) {
+        toast('请输入学习内容', 'error');
+        return;
+    }
 
     const session = {
         id: Date.now(),
@@ -142,16 +147,16 @@ document.getElementById('timelineForm').addEventListener('submit', function(e) {
     toast('学习记录已添加！', 'success');
 });
 
-document.getElementById('tlFilterSubject').addEventListener('change', renderTimeline);
+document.getElementById('tlFilterSubject').addEventListener('input', renderTimeline);
 document.getElementById('tlSearch').addEventListener('input', renderTimeline);
 
 function renderTimeline() {
     const container = document.getElementById('timelineList');
-    const filter = document.getElementById('tlFilterSubject').value;
+    const filter = document.getElementById('tlFilterSubject').value.trim().toLowerCase();
     const search = document.getElementById('tlSearch').value.trim().toLowerCase();
 
     let list = state.sessions;
-    if (filter !== 'all') list = list.filter(s => s.subject === filter);
+    if (filter) list = list.filter(s => s.subject.toLowerCase().includes(filter));
     if (search) list = list.filter(s => s.content.toLowerCase().includes(search) || s.subject.toLowerCase().includes(search));
 
     if (list.length === 0) {
@@ -161,13 +166,15 @@ function renderTimeline() {
 
     container.innerHTML = list.map(s => `
         <div class="timeline-item">
-            <button class="timeline-delete" data-id="${s.id}">✕ 删除</button>
             <div class="timeline-item-header">
                 <span class="timeline-date">📅 ${formatDate(s.date)}</span>
                 <span class="timeline-subject">${s.subject}</span>
                 <span class="timeline-duration">⏱ ${s.duration} 小时</span>
             </div>
             <div class="timeline-content">${s.content}</div>
+            <div class="timeline-footer">
+                <button class="timeline-delete" data-id="${s.id}">✕ 删除此记录</button>
+            </div>
         </div>
     `).join('');
 
@@ -212,6 +219,34 @@ document.getElementById('blogForm').addEventListener('submit', function(e) {
 });
 
 document.getElementById('blogSearch').addEventListener('input', renderBlogList);
+
+/* ========== Blog Image Upload ========== */
+document.getElementById('blogImageBtn').addEventListener('click', function() {
+    document.getElementById('blogImageInput').click();
+});
+
+document.getElementById('blogImageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        toast('图片不能超过 5MB', 'error');
+        this.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        const textarea = document.getElementById('blogContent');
+        const imgMarkdown = '\n![' + file.name + '](' + ev.target.result + ')\n';
+        const cursorPos = textarea.selectionStart;
+        const text = textarea.value;
+        textarea.value = text.substring(0, cursorPos) + imgMarkdown + text.substring(cursorPos);
+        toast('图片已插入到文章中');
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+});
 
 function renderBlogList() {
     const container = document.getElementById('blogList');
