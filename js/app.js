@@ -140,15 +140,10 @@ const SyncService = {
 
             if (serverData) {
                 mergedAllUsers = [...new Set([...state.allUsers, ...(serverData.allUsers || [])])].sort();
-                if (serverData.activeUser && serverData.activeUser !== mergedActiveUser) {
-                    mergedActiveUser = serverData.activeUser;
-                }
             }
 
             state.allUsers = mergedAllUsers;
-            state.activeUser = mergedActiveUser;
             Store.set('allUsers', mergedAllUsers);
-            Store.set('activeUser', mergedActiveUser);
 
             for (const username of mergedAllUsers) {
                 const local = {
@@ -244,9 +239,7 @@ const SyncService = {
             if (!serverData) throw new Error('云端暂无数据');
 
             state.allUsers = serverData.allUsers || ['默认用户'];
-            state.activeUser = serverData.activeUser || '默认用户';
             Store.set('allUsers', state.allUsers);
-            Store.set('activeUser', state.activeUser);
 
             for (const username of state.allUsers) {
                 const userData = serverData.users && serverData.users[username];
@@ -1341,22 +1334,15 @@ function renderCalendar() {
         if (hasStudy) {
             dayHtml += '<span class="calendar-day-hours">' + stats.total.toFixed(1) + 'h</span>';
             dayHtml += '<div class="calendar-tooltip">';
-            var userKeys = Object.keys(stats.users);
-            if (userKeys.length === 1) {
-                dayHtml += '<div class="calendar-tooltip-total">共 ' + stats.total.toFixed(1) + ' 小时</div>';
-                Object.entries(stats.subjects).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
+            dayHtml += '<div class="calendar-tooltip-total">共 ' + stats.total.toFixed(1) + ' 小时</div>';
+            var userKeys = Object.keys(stats.users).sort();
+            userKeys.forEach(function(username) {
+                var userData = stats.users[username];
+                dayHtml += '<div class="calendar-tooltip-user">' + username + '：' + userData.total.toFixed(1) + 'h</div>';
+                Object.entries(userData.subjects).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
                     dayHtml += '<div class="calendar-tooltip-item"><span>' + entry[0] + '</span><span>' + entry[1].toFixed(1) + 'h</span></div>';
                 });
-            } else {
-                dayHtml += '<div class="calendar-tooltip-total">共 ' + stats.total.toFixed(1) + ' 小时</div>';
-                userKeys.forEach(function(username) {
-                    var userData = stats.users[username];
-                    dayHtml += '<div class="calendar-tooltip-user">' + username + '：' + userData.total.toFixed(1) + 'h</div>';
-                    Object.entries(userData.subjects).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
-                        dayHtml += '<div class="calendar-tooltip-item"><span>' + entry[0] + '</span><span>' + entry[1].toFixed(1) + 'h</span></div>';
-                    });
-                });
-            }
+            });
             dayHtml += '</div>';
         }
 
