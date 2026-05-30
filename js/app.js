@@ -315,7 +315,7 @@ function maybeSync() {
         return;
     }
     _syncPending = false;
-    SyncService.syncAll().then(function() {
+    SyncService.pushOnly().then(function() {
         if (_syncPending) maybeSync();
     }).catch(function() {
         if (_syncPending) maybeSync();
