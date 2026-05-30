@@ -1300,12 +1300,7 @@ body {
     font-size: 13px;
     padding: 4px 8px;
     border-radius: 4px;
-    opacity: 0;
     transition: all 0.2s;
-}
-
-.blog-post:hover .blog-post-delete {
-    opacity: 1;
 }
 
 .blog-post-delete:hover {
@@ -1501,6 +1496,9 @@ body {
     gap: 6px;
     float: right;
     margin-left: 12px;
+    background: #f8f9fb;
+    padding: 2px 4px;
+    border-radius: 6px;
 }
 
 .blog-post-edit {
@@ -1509,9 +1507,10 @@ body {
     cursor: pointer;
     font-size: 12px;
     color: var(--primary);
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
     transition: all 0.2s;
+    font-weight: 500;
 }
 
 .blog-post-edit:hover {

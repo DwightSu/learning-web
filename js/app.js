@@ -306,14 +306,20 @@ function mergeGallery(local, server) {
     return Array.from(map.values());
 }
 
-let _syncTimer = null;
+let _syncPending = false;
+
 function maybeSync() {
-    if (!SyncService.connected || SyncService.syncInProgress) return;
-    if (_syncTimer) clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(function() {
-        SyncService.syncAll();
-        _syncTimer = null;
-    }, 2000);
+    if (!SyncService.connected) return;
+    if (SyncService.syncInProgress) {
+        _syncPending = true;
+        return;
+    }
+    _syncPending = false;
+    SyncService.syncAll().then(function() {
+        if (_syncPending) maybeSync();
+    }).catch(function() {
+        if (_syncPending) maybeSync();
+    });
 }
 
 function updateSyncUI(status) {
